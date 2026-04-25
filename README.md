@@ -1,5 +1,3 @@
-# Frontend
-
 # ⚾ 기여 가이드라인 (Contributing Guidelines)
 
 일관된 코드 품질과 효율적인 협업을 위해 아래 규칙을 준수해 주세요.
