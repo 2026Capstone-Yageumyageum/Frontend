@@ -1,13 +1,13 @@
-import './src/styles/global.css';
+// NativeWind v2: Babel 플러그인 방식으로 동작하므로 CSS import 불필요
 import { StatusBar } from 'expo-status-bar';
-import { Text, View } from 'react-native';
+import ComponentShowcase from './src/screens/ComponentShowcase';
 
+// 앱 진입점: 컴포넌트 쇼케이스 화면을 렌더링
 export default function App() {
   return (
-    <View className="flex-1 items-center justify-center bg-white">
-      <Text className="text-2xl font-bold text-blue-600">⚾ 야금야금 프론트엔드</Text>
-      <Text className="mt-2 text-gray-500">React Native + Tailwind CSS + TypeScript</Text>
+    <>
+      <ComponentShowcase />
       <StatusBar style="auto" />
-    </View>
+    </>
   );
 }
