@@ -38,7 +38,7 @@ type ButtonProps = {
 // 사이즈별 레이아웃 스타일
 const SIZE_STYLES: Record<ButtonSize, string> = {
   // w-full로 부모 너비 100%, h-14로 높이 고정
-  long: 'w-full h-14 rounded-2xl flex-row items-center justify-center px-6',
+  long: 'w-full h-14 rounded-2xl flex-row items-center justify-center',
   // 콘텐츠에 맞게 px로 좌우 패딩, 높이 고정
   short: 'h-11 px-7 rounded-xl flex-row items-center justify-center',
   // w-16 h-16으로 원형 버튼 (rounded-full)
@@ -114,10 +114,18 @@ export default function Button({
         <ActivityIndicator color={getSpinnerColor(variant, disabled)} size="small" />
       ) : (
         <>
-          {/* 아이콘 - 라벨이 있을 경우 오른쪽 마진 추가 */}
-          {icon && <View className={label ? 'mr-2' : ''}>{icon}</View>}
-          {/* 라벨 */}
-          {label && <Text className={textClass}>{label}</Text>}
+          {/* 아이콘 - 가이드라인에 맞춰 상하좌우 18dp 여백 고정 */}
+          {icon && (
+            <View style={{ margin: 18 }}>
+              {icon}
+            </View>
+          )}
+          {/* 라벨 - 가이드라인에 맞춰 좌우 8dp 여백 고정 */}
+          {label && (
+            <Text className={textClass} style={{ marginHorizontal: 8 }}>
+              {label}
+            </Text>
+          )}
         </>
       )}
     </TouchableOpacity>

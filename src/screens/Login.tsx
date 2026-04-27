@@ -2,11 +2,21 @@ import React from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 // screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
 import Button from '../components/common/Button';
+// 구글 공식 로고 SVG 컴포넌트 (react-native-svg 기반)
+import GoogleIcon from '../assets/GoogleIcon';
+// 화면 전환을 위한 네비게이션 훅 - NavigationContainer 안에서만 사용 가능
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../../App';
 
 export default function Login() {
+    // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
+    const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+
     const handleGoogleLogin = () => {
         // TODO: 추후 Google OAuth 로그인 연동 로직 구현
-        console.log('Google OAuth 로그인 버튼 클릭');
+        // 일단 라우팅 테스트를 위해 Test 화면으로 이동
+        navigation.navigate('Test');
     };
 
     return (
@@ -39,6 +49,8 @@ export default function Login() {
                         variant="outlined"
                         label="Google로 계속하기"
                         onPress={handleGoogleLogin}
+                        // size={20}: 버튼 높이(h-14 = 56px)에서 텍스트와 시각적 균형을 맞춘 크기
+                        icon={<GoogleIcon size={20} />}
                     />
                 </View>
 
