@@ -1,0 +1,51 @@
+import React from 'react';
+import { View, Text, SafeAreaView } from 'react-native';
+// screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
+import Button from '../components/common/Button';
+
+export default function Login() {
+    const handleGoogleLogin = () => {
+        // TODO: 추후 Google OAuth 로그인 연동 로직 구현
+        console.log('Google OAuth 로그인 버튼 클릭');
+    };
+
+    return (
+        <SafeAreaView className="flex-1 bg-white">
+            <View className="flex-1 px-6">
+
+                {/* 1. 상단 유동적 여백 (하단과 동일하게 비율 1.5로 수정) */}
+                <View style={{ flex: 1.5 }} />
+
+                {/* 2. 중앙: 로고 및 문구 영역 */}
+                <View className="items-center" style={{ gap: 12 }}>
+                    {/* 앱 로고 플레이스홀더 */}
+                    <View className="w-24 h-24 bg-gray-100 rounded-3xl items-center justify-center">
+                        <Text className="text-gray-400 font-bold text-center">로고 미정</Text>
+                    </View>
+
+                    {/* 서브 카피 문구 */}
+                    <Text className="text-gray-600 text-base font-medium text-center">
+                        쉽고 간편한 나만의 투구폼 코칭 서비스
+                    </Text>
+                </View>
+
+                {/* 3. 로고와 버튼 사이 유동적 여백 (전체 비율 7을 맞추기 위해 비율 4로 수정) */}
+                <View style={{ flex: 4 }} />
+
+                {/* 4. 하단: 소셜 로그인 버튼 영역 */}
+                <View className="w-full">
+                    <Button
+                        size="long"
+                        variant="outlined"
+                        label="Google로 계속하기"
+                        onPress={handleGoogleLogin}
+                    />
+                </View>
+
+                {/* 5. 하단 유동적 여백 (마음에 드시는 기존 비율 1.5 유지) */}
+                <View style={{ flex: 1.5 }} />
+
+            </View>
+        </SafeAreaView>
+    );
+}
