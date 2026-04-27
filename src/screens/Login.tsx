@@ -63,8 +63,8 @@ export default function Login() {
                         size="long"
                         variant="outlined"
                         label="Google로 계속하기"
-                        onPress={handleGoogleLogin}
-                        // size={20}: 버튼 높이(h-14 = 56px)에서 텍스트와 시각적 균형을 맞춘 크기
+                        disabled={!request}
+                        onPress={() => promptAsync()}
                         icon={<GoogleIcon size={20} />}
                     />
                 </View>
