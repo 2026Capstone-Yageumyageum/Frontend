@@ -1,29 +1,44 @@
-import React from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
-// screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
+import React, { useEffect } from 'react';
+import { View, Text, SafeAreaView, Alert } from 'react-native';
 import Button from '../components/common/Button';
-// 구글 공식 로고 SVG 컴포넌트 (react-native-svg 기반)
 import GoogleIcon from '../assets/GoogleIcon';
-// 화면 전환을 위한 네비게이션 훅 - NavigationContainer 안에서만 사용 가능
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function Login() {
     // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    const handleGoogleLogin = () => {
-        // TODO: 추후 Google OAuth 로그인 연동 로직 구현
-        // 일단 라우팅 테스트를 위해 Test 화면으로 이동
-        navigation.navigate('Test');
+    // 2. Google OAuth 설정
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        clientId: '340855020974-oqq6gi6kg9ljt839t0fk6elgg6r2ea5k.apps.googleusercontent.com',
+    });
+
+    // 3. 인증 응답 처리
+    useEffect(() => {
+        if (response?.type === 'success') {
+            const { authentication } = response;
+            // TODO: 서버에 인증 정보 전달 및 토큰 저장 로직 추가
+            navigation.navigate('Test');
+        } else if (response?.type === 'error') {
+            Alert.alert('로그인 실패', 'Google 로그인 중 오류가 발생했습니다.');
+        }
+    }, [response]);
+
+    const handleGoogleLogin = async () => {
+        await promptAsync();
     };
 
     return (
         <SafeAreaView className="flex-1 bg-white">
             <View className="flex-1 px-6">
 
-                {/* 1. 상단 유동적 여백 (하단과 동일하게 비율 1.5로 수정) */}
+                {/* 1. 상단 유동적 여백 */}
                 <View style={{ flex: 1.5 }} />
 
                 {/* 2. 중앙: 로고 및 문구 영역 */}
@@ -39,7 +54,7 @@ export default function Login() {
                     </Text>
                 </View>
 
-                {/* 3. 로고와 버튼 사이 유동적 여백 (전체 비율 7을 맞추기 위해 비율 4로 수정) */}
+                {/* 3. 로고와 버튼 사이 유동적 여백 */}
                 <View style={{ flex: 4 }} />
 
                 {/* 4. 하단: 소셜 로그인 버튼 영역 */}
@@ -54,7 +69,7 @@ export default function Login() {
                     />
                 </View>
 
-                {/* 5. 하단 유동적 여백 (마음에 드시는 기존 비율 1.5 유지) */}
+                {/* 5. 하단 유동적 여백 */}
                 <View style={{ flex: 1.5 }} />
 
             </View>
