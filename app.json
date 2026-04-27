@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "my-app",
+    "name": "Fitch",
     "slug": "my-app",
+    "scheme": "com.fitch.frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,9 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.fitch.frontend",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.fitch.frontend",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -27,7 +30,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-web-browser"
-    ]
+      "@react-native-google-signin/google-signin"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "526314a1-d798-4ebf-99a6-a737edb39530"
+      }
+    }
   }
 }
