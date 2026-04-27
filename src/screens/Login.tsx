@@ -2,6 +2,8 @@ import React from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 // screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
 import Button from '../components/common/Button';
+// 구글 공식 로고 SVG 컴포넌트 (react-native-svg 기반)
+import GoogleIcon from '../assets/GoogleIcon';
 
 export default function Login() {
     const handleGoogleLogin = () => {
@@ -39,6 +41,8 @@ export default function Login() {
                         variant="outlined"
                         label="Google로 계속하기"
                         onPress={handleGoogleLogin}
+                        // size={20}: 버튼 높이(h-14 = 56px)에서 텍스트와 시각적 균형을 맞춘 크기
+                        icon={<GoogleIcon size={20} />}
                     />
                 </View>
 
