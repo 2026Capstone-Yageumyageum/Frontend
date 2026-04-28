@@ -42,7 +42,33 @@ export default function Login() {
             navigation.navigate('Test');
 
         } catch (error) {
-            console.log('GoogleSignin.hasPlayServices() error', error);
+            // isErrorWithCode: 라이브러리에서 제공하는 타입가드로, error.code 속성에 접근할 수 있게 해줌
+            if (isErrorWithCode(error)) {
+                switch (error.code) {
+                    case statusCodes.SIGN_IN_CANCELLED:
+                        // 사용자가 직접 로그인 창을 닫은 경우
+                        console.warn('[Google 로그인] 사용자가 로그인을 취소했습니다.');
+                        break;
+                    case statusCodes.IN_PROGRESS:
+                        // 이미 로그인 진행 중인데 또 요청한 경우
+                        console.warn('[Google 로그인] 이미 로그인이 진행 중입니다.');
+                        break;
+                    case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+                        // Google Play Services가 기기에 없거나 버전이 낮은 경우
+                        console.error('[Google 로그인] Google Play Services를 사용할 수 없습니다.');
+                        break;
+                    default:
+                        // DEVELOPER_ERROR 등 설정 문제: SHA-1 미등록, 패키지명 불일치, 잘못된 clientId 등
+                        console.error('[Google 로그인] 알 수 없는 오류 발생');
+                        console.error('  → 에러 코드:', error.code);
+                        console.error('  → 에러 메시지:', error.message);
+                        console.error('  → DEVELOPER_ERROR라면 Google Cloud Console의 SHA-1 지문 또는 패키지명을 확인하세요.');
+                        break;
+                }
+            } else {
+                // 라이브러리와 무관한 일반 JS 에러 (네트워크 오류 등)
+                console.error('[Google 로그인] 예기치 않은 에러:', error);
+            }
         }
     };
 
