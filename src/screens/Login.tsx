@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 // screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
 import Button from '../components/common/Button';
@@ -8,15 +8,42 @@ import GoogleIcon from '../assets/GoogleIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } from '@react-native-google-signin/google-signin'
 
 export default function Login() {
     // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    const handleGoogleLogin = () => {
-        // TODO: 추후 Google OAuth 로그인 연동 로직 구현
-        // 일단 라우팅 테스트를 위해 Test 화면으로 이동
-        navigation.navigate('Test');
+    useEffect(() => {
+        GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+            offlineAccess: true,
+        });
+    }, [])
+
+    const handleGoogleLogin = async () => {
+        console.log('클라이언트 ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+        try {
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+            const response = await GoogleSignin.signIn();
+
+            if (isSuccessResponse(response)) {
+                const idToken = response.data.idToken;
+                const userInfo = response.data.user;
+
+                console.log('구글 로그인 성공!');
+                console.log('이름:', userInfo.name);
+                console.log('이메일:', userInfo.email);
+                console.log('획득한 idToken:', idToken);
+            }
+
+            // 일단 라우팅 테스트를 위해 Test 화면으로 이동
+            navigation.navigate('Test');
+
+        } catch (error) {
+            console.log('GoogleSignin.hasPlayServices() error', error);
+        }
     };
 
     return (
