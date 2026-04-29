@@ -37,8 +37,9 @@ export default function Signup() {
             console.log('[닉네임 등록 성공]', result);
 
             // TODO: result.accessToken, result.refreshToken을 SecureStore에 저장 후 메인으로 이동
-            // navigation.navigate('Home');
-            Alert.alert('가입 완료', `${trimmedNickname}님, 환영합니다!`);
+            Alert.alert('가입 완료', `${trimmedNickname}님, 환영합니다!`, [
+                { text: '확인', onPress: () => navigation.navigate('Home') }
+            ]);
         } catch (error) {
             console.error('[닉네임 등록 실패]', error);
             Alert.alert('오류', '닉네임 등록에 실패했습니다. 다시 시도해주세요.');

@@ -54,7 +54,7 @@ export default function Login() {
                     // 기존 유저: 토큰 저장 후 메인 화면으로 이동
                     // TODO: accessToken, refreshToken을 SecureStore 등 안전한 저장소에 저장
                     console.log('기존 유저 로그인 완료. 메인으로 이동합니다.');
-                    // navigation.navigate('Home');  ← Home 화면 구현 후 활성화
+                    navigation.navigate('Home');
                 } else {
                     // 신규 유저: 닉네임 등록 화면으로 이동, 이메일 전달
                     console.log('신규 유저 감지. 닉네임 등록 화면으로 이동합니다.');

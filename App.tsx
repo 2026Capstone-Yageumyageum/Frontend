@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './src/screens/Login';
 import Signup from './src/screens/Signup';
+import Home from './src/screens/Home';
 
 // ✅ 타입은 src/types/navigation.ts에서 중앙 관리합니다.
 //    여기서는 라우터 설정에만 사용하기 위해 import합니다.
@@ -28,6 +29,8 @@ export default function App() {
         <Stack.Screen name="Login" component={Login} />
         {/* 신규 유저 닉네임 등록 화면 */}
         <Stack.Screen name="Signup" component={Signup} />
+        {/* 메인 화면 */}
+        <Stack.Screen name="Home" component={Home} />
 
       </Stack.Navigator>
       <StatusBar style="auto" />
