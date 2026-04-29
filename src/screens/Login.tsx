@@ -8,6 +8,8 @@ import { RootStackParamList } from '../types/navigation';
 import { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } from '@react-native-google-signin/google-signin';
 // 백엔드 API 통신 함수
 import { loginWithGoogle } from '../api/authApi';
+// 토큰 저장 유틸리티
+import { saveTokens } from '../utils/token';
 
 export default function Login() {
     // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
@@ -52,7 +54,9 @@ export default function Login() {
 
                 if (authResult.isRegistered) {
                     // 기존 유저: 토큰 저장 후 메인 화면으로 이동
-                    // TODO: accessToken, refreshToken을 SecureStore 등 안전한 저장소에 저장
+                    if (authResult.accessToken && authResult.refreshToken) {
+                        await saveTokens(authResult.accessToken, authResult.refreshToken);
+                    }
                     console.log('기존 유저 로그인 완료. 메인으로 이동합니다.');
                     navigation.navigate('Home');
                 } else {
