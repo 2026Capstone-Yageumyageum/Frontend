@@ -1,14 +1,13 @@
 import React, { useEffect } from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
-// screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
 import Button from '../components/common/Button';
-// 구글 공식 로고 SVG 컴포넌트 (react-native-svg 기반)
 import GoogleIcon from '../assets/GoogleIcon';
-// 화면 전환을 위한 네비게이션 훅 - NavigationContainer 안에서만 사용 가능
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../../App';
-import { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } from '@react-native-google-signin/google-signin'
+import { RootStackParamList } from '../types/navigation';
+import { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } from '@react-native-google-signin/google-signin';
+// 백엔드 API 통신 함수
+import { loginWithGoogle } from '../api/authApi';
 
 export default function Login() {
     // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
@@ -36,10 +35,32 @@ export default function Login() {
                 console.log('이름:', userInfo.name);
                 console.log('이메일:', userInfo.email);
                 console.log('획득한 idToken:', idToken);
-            }
 
-            // 일단 라우팅 테스트를 위해 Test 화면으로 이동
-            navigation.navigate('Test');
+                // idToken이 null인 경우 방어 처리
+                // (구글이 idToken을 반환하지 않는 경우는 드물지만 안전하게 처리)
+                if (!idToken) {
+                    console.error('[Google 로그인] idToken을 받지 못했습니다.');
+                    return;
+                }
+
+                // ─────────────────────────────────────────────
+                //  백엔드에 idToken 전달
+                //  응답에 따라 기존 유저 / 신규 유저 분기 처리
+                // ─────────────────────────────────────────────
+                const authResult = await loginWithGoogle(idToken);
+                console.log('[서버 응답]', authResult);
+
+                if (authResult.isRegistered) {
+                    // 기존 유저: 토큰 저장 후 메인 화면으로 이동
+                    // TODO: accessToken, refreshToken을 SecureStore 등 안전한 저장소에 저장
+                    console.log('기존 유저 로그인 완료. 메인으로 이동합니다.');
+                    // navigation.navigate('Home');  ← Home 화면 구현 후 활성화
+                } else {
+                    // 신규 유저: 닉네임 등록 화면으로 이동, 이메일 전달
+                    console.log('신규 유저 감지. 닉네임 등록 화면으로 이동합니다.');
+                    navigation.navigate('Signup', { email: authResult.email });
+                }
+            }
 
         } catch (error) {
             // isErrorWithCode: 라이브러리에서 제공하는 타입가드로, error.code 속성에 접근할 수 있게 해줌
@@ -66,7 +87,7 @@ export default function Login() {
                         break;
                 }
             } else {
-                // 라이브러리와 무관한 일반 JS 에러 (네트워크 오류 등)
+                // 라이브러리와 무관한 일반 JS 에러 (네트워크 오류, 백엔드 API 실패 등)
                 console.error('[Google 로그인] 예기치 않은 에러:', error);
             }
         }

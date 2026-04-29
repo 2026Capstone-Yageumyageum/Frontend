@@ -5,16 +5,11 @@ import { NavigationContainer } from '@react-navigation/native';
 // createNativeStackNavigator: iOS/Android 네이티브 스택 전환 애니메이션 제공
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './src/screens/Login';
-import Test from './src/screens/Test';
+import Signup from './src/screens/Signup';
 
-// ─────────────────────────────────────────────
-//  타입 정의: 각 스크린에서 navigation.navigate('스크린명')으로 이동할 때
-//  타입 안전성을 보장하기 위해 파라미터 맵을 정의합니다.
-// ─────────────────────────────────────────────
-export type RootStackParamList = {
-  Login: undefined; // 파라미터 없음
-  Test: undefined;  // 파라미터 없음
-};
+// ✅ 타입은 src/types/navigation.ts에서 중앙 관리합니다.
+//    여기서는 라우터 설정에만 사용하기 위해 import합니다.
+import { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -31,8 +26,9 @@ export default function App() {
       >
         {/* 로그인 화면 */}
         <Stack.Screen name="Login" component={Login} />
-        {/* 라우팅 테스트용 화면 */}
-        <Stack.Screen name="Test" component={Test} />
+        {/* 신규 유저 닉네임 등록 화면 */}
+        <Stack.Screen name="Signup" component={Signup} />
+
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>
