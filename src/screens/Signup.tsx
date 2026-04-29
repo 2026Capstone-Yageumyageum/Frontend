@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import Button from '../components/common/Button';
 import { signupWithNickname } from '../api/authApi';
+import { saveTokens } from '../utils/token';
 
 // 이 화면은 Login → Signup으로 이동할 때 { email } 파라미터를 받습니다.
 type SignupScreenRouteProp = RouteProp<RootStackParamList, 'Signup'>;
@@ -36,7 +37,11 @@ export default function Signup() {
             const result = await signupWithNickname(email, trimmedNickname);
             console.log('[닉네임 등록 성공]', result);
 
-            // TODO: result.accessToken, result.refreshToken을 SecureStore에 저장 후 메인으로 이동
+            // 토큰 저장
+            if (result.accessToken && result.refreshToken) {
+                await saveTokens(result.accessToken, result.refreshToken);
+            }
+
             Alert.alert('가입 완료', `${trimmedNickname}님, 환영합니다!`, [
                 { text: '확인', onPress: () => navigation.navigate('Home') }
             ]);
