@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, SafeAreaView } from 'react-native';
 // screens/ 폴더에서 components/common/ 폴더로 가려면 한 단계 위로('../') 올라가야 합니다.
 import Button from '../components/common/Button';
@@ -8,15 +8,68 @@ import GoogleIcon from '../assets/GoogleIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../../App';
+import { GoogleSignin, statusCodes, isErrorWithCode, isSuccessResponse } from '@react-native-google-signin/google-signin'
 
 export default function Login() {
     // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
     const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
-    const handleGoogleLogin = () => {
-        // TODO: 추후 Google OAuth 로그인 연동 로직 구현
-        // 일단 라우팅 테스트를 위해 Test 화면으로 이동
-        navigation.navigate('Test');
+    useEffect(() => {
+        GoogleSignin.configure({
+            webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+            offlineAccess: true,
+        });
+    }, [])
+
+    const handleGoogleLogin = async () => {
+        console.log('클라이언트 ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+        try {
+            await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+            const response = await GoogleSignin.signIn();
+
+            if (isSuccessResponse(response)) {
+                const idToken = response.data.idToken;
+                const userInfo = response.data.user;
+
+                console.log('구글 로그인 성공!');
+                console.log('이름:', userInfo.name);
+                console.log('이메일:', userInfo.email);
+                console.log('획득한 idToken:', idToken);
+            }
+
+            // 일단 라우팅 테스트를 위해 Test 화면으로 이동
+            navigation.navigate('Test');
+
+        } catch (error) {
+            // isErrorWithCode: 라이브러리에서 제공하는 타입가드로, error.code 속성에 접근할 수 있게 해줌
+            if (isErrorWithCode(error)) {
+                switch (error.code) {
+                    case statusCodes.SIGN_IN_CANCELLED:
+                        // 사용자가 직접 로그인 창을 닫은 경우
+                        console.warn('[Google 로그인] 사용자가 로그인을 취소했습니다.');
+                        break;
+                    case statusCodes.IN_PROGRESS:
+                        // 이미 로그인 진행 중인데 또 요청한 경우
+                        console.warn('[Google 로그인] 이미 로그인이 진행 중입니다.');
+                        break;
+                    case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+                        // Google Play Services가 기기에 없거나 버전이 낮은 경우
+                        console.error('[Google 로그인] Google Play Services를 사용할 수 없습니다.');
+                        break;
+                    default:
+                        // DEVELOPER_ERROR 등 설정 문제: SHA-1 미등록, 패키지명 불일치, 잘못된 clientId 등
+                        console.error('[Google 로그인] 알 수 없는 오류 발생');
+                        console.error('  → 에러 코드:', error.code);
+                        console.error('  → 에러 메시지:', error.message);
+                        console.error('  → DEVELOPER_ERROR라면 Google Cloud Console의 SHA-1 지문 또는 패키지명을 확인하세요.');
+                        break;
+                }
+            } else {
+                // 라이브러리와 무관한 일반 JS 에러 (네트워크 오류 등)
+                console.error('[Google 로그인] 예기치 않은 에러:', error);
+            }
+        }
     };
 
     return (
