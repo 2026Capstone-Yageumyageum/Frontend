@@ -2,10 +2,9 @@
   "name": "my-app",
   "main": "index.ts",
   "scripts": {
-    "start": "node update-env-ip.js && expo start",
-    "dev": "node update-env-ip.js && npx expo start -c --dev-client",
-    "android": "node update-env-ip.js && expo start --android",
-    "ios": "node update-env-ip.js && expo start --ios",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint .",
     "format": "prettier --write ."
