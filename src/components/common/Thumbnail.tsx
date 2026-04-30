@@ -42,11 +42,7 @@ export default function Thumbnail({
     // overflow hidden으로 이미지가 rounded 경계를 넘지 않도록
     <View className="rounded-2xl overflow-hidden" style={{ width, height }}>
       {/* 배경 썸네일 이미지 */}
-      <Image
-        source={{ uri: imageUri }}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      />
+      <Image source={{ uri: imageUri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
 
       {/* 이미지가 로드 안 될 경우를 대비한 회색 폴백 배경 */}
       <View style={[StyleSheet.absoluteFillObject, styles.fallbackBg]} />

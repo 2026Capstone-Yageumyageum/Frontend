@@ -11,8 +11,8 @@
 //  상수 정의
 // ─────────────────────────────────────────────
 
-/** 
- * 백엔드 서버 베이스 URL 
+/**
+ * 백엔드 서버 베이스 URL
  * 모바일 기기(Expo Go)에서 실행할 때 localhost는 모바일 기기 자신을 가리킵니다.
  * 따라서 PC의 IP 주소(예: 192.168.45.251)를 사용해야 합니다.
  */
@@ -30,8 +30,8 @@ export interface AuthResponse {
   email: string;
   isRegistered: boolean;
   message: string;
-  accessToken?: string;   // 기존 유저만 포함
-  refreshToken?: string;  // 기존 유저만 포함
+  accessToken?: string; // 기존 유저만 포함
+  refreshToken?: string; // 기존 유저만 포함
 }
 
 /** /api/auth/refresh 응답 */
@@ -45,6 +45,31 @@ export interface TokenResponse {
 // ─────────────────────────────────────────────
 
 /**
+ * fetch 요청 시 일정 시간(ms)이 지나면 강제로 에러를 발생시키는 헬퍼 함수
+ * 이를 통해 잘못된 IP나 서버 미응답 시 앱이 무한정 멈춰있는 현상을 방지합니다.
+ */
+async function fetchWithTimeout(resource: string, options: RequestInit = {}) {
+  const timeout = 5000; // 5초 타임아웃
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`[API 타임아웃] 서버가 응답하지 않습니다. IP 주소나 서버 상태를 확인하세요. (요청 URL: ${resource})`);
+    }
+    throw error;
+  }
+}
+
+/**
  * 구글 ID Token으로 로그인 요청
  * POST /api/auth/google
  *
@@ -52,7 +77,7 @@ export interface TokenResponse {
  * @returns AuthResponse - isRegistered: false이면 신규 유저
  */
 export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
-  const response = await fetch(`${BASE_URL}/api/auth/google`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/api/auth/google`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -77,10 +102,7 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
  * @param nickname - 사용자가 입력한 닉네임
  * @returns AuthResponse - accessToken, refreshToken 포함
  */
-export async function signupWithNickname(
-  email: string,
-  nickname: string,
-): Promise<AuthResponse> {
+export async function signupWithNickname(email: string, nickname: string): Promise<AuthResponse> {
   const response = await fetch(`${BASE_URL}/api/auth/signup`, {
     method: 'POST',
     headers: {

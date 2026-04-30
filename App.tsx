@@ -31,7 +31,6 @@ export default function App() {
         <Stack.Screen name="Signup" component={Signup} />
         {/* 메인 화면 */}
         <Stack.Screen name="Home" component={Home} />
-
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>
