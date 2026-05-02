@@ -15,6 +15,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import FeedScreen from '../features/feed/screens/FeedScreen';
+import MyScreen from '../features/my/screens/MyScreen';
 
 // ─── 임시 화면 (추후 각 기능 구현 시 교체) ──────────────────────────────────
 function CameraScreen() {
@@ -25,13 +26,7 @@ function CameraScreen() {
   );
 }
 
-function MyScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>마이 화면 (준비 중)</Text>
-    </View>
-  );
-}
+// MyScreen은 src/features/my/screens/MyScreen.tsx에서 import합니다.
 
 // ─── 탭 파라미터 타입 ────────────────────────────────────────────────────────
 type TabParamList = {

@@ -21,7 +21,8 @@
  */
 
 import React from 'react';
-import { View, Text, FlatList, SafeAreaView, ListRenderItem } from 'react-native';
+import { View, Text, FlatList, ListRenderItem } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import SegmentedToggle from '../components/SegmentedToggle';
 import FilterChipList from '../components/FilterChipList';
 import ProMatchingCard from '../components/ProMatchingCard';

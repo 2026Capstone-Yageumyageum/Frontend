@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, SafeAreaView } from 'react-native';
+import { View, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/common/Button';
 import GoogleIcon from '../assets/GoogleIcon';
 import { useNavigation } from '@react-navigation/native';
