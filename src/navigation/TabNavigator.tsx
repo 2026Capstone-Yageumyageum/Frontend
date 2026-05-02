@@ -16,16 +16,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import FeedScreen from '../features/feed/screens/FeedScreen';
 import MyScreen from '../features/my/screens/MyScreen';
+import CameraScreen from '../features/camera/screens/CameraScreen';
 
-// ─── 임시 화면 (추후 각 기능 구현 시 교체) ──────────────────────────────────
-function CameraScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <Text>카메라 화면 (준비 중)</Text>
-    </View>
-  );
-}
-
+// CameraScreen은 src/features/camera/screens/CameraScreen.tsx에서 import합니다.
 // MyScreen은 src/features/my/screens/MyScreen.tsx에서 import합니다.
 
 // ─── 탭 파라미터 타입 ────────────────────────────────────────────────────────
@@ -86,7 +79,7 @@ export default function TabNavigator() {
               <Ionicons
                 name="camera"
                 size={26}
-                color={focused ? '#FFFFFF' : '#FFFFFF'}
+                color={'#FFFFFF'}
               />
             </View>
           ),
@@ -103,6 +96,8 @@ export default function TabNavigator() {
               카메라
             </Text>
           ),
+          // 카메라 화면에서는 탭바 숨김 (전체 화면 모드)
+          tabBarStyle: { display: 'none' },
         }}
       />
 
