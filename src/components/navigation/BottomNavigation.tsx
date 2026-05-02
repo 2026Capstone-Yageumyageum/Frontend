@@ -23,10 +23,7 @@ type BottomNavigationProps = {
   onTabPress: (name: string) => void;
 };
 
-export default function BottomNavigation({
-  activeTab,
-  onTabPress,
-}: BottomNavigationProps) {
+export default function BottomNavigation({ activeTab, onTabPress }: BottomNavigationProps) {
   return (
     // border-t로 상단 구분선, pb-6으로 홈 인디케이터 여백 확보
     <View className="flex-row bg-white border-t border-gray-100 pt-2 pb-6">

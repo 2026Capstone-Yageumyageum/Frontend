@@ -115,11 +115,7 @@ export default function Button({
       ) : (
         <>
           {/* 아이콘 - 가이드라인에 맞춰 상하좌우 18dp 여백 고정 */}
-          {icon && (
-            <View style={{ margin: 18 }}>
-              {icon}
-            </View>
-          )}
+          {icon && <View style={{ margin: 18 }}>{icon}</View>}
           {/* 라벨 - 가이드라인에 맞춰 좌우 8dp 여백 고정 */}
           {label && (
             <Text className={textClass} style={{ marginHorizontal: 8 }}>

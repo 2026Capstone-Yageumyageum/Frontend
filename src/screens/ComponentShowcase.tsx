@@ -179,7 +179,5 @@ function SectionTitle({ title }: { title: string }) {
 }
 
 function SubTitle({ title }: { title: string }) {
-  return (
-    <Text className="text-xs text-gray-400 mb-2 mt-3">{title}</Text>
-  );
+  return <Text className="text-xs text-gray-400 mb-2 mt-3">{title}</Text>;
 }

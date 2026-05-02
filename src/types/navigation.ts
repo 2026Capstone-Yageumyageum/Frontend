@@ -9,9 +9,10 @@
  */
 
 export type RootStackParamList = {
-  Login: undefined;    // 파라미터 없음
-  Signup: {            // 신규 유저: 구글 로그인 후 닉네임 등록 화면으로 이동할 때 이메일 전달
+  Login: undefined; // 파라미터 없음
+  Signup: {
+    // 신규 유저: 구글 로그인 후 닉네임 등록 화면으로 이동할 때 이메일 전달
     email: string;
   };
-  Home: undefined;     // 로그인 완료 후 메인 화면 (추후 구현)
+  Home: undefined; // 로그인 완료 후 메인 화면 (추후 구현)
 };
