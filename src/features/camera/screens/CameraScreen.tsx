@@ -40,6 +40,9 @@ import {
   useCameraDevice,
   useCameraPermission,
   CameraDevice,
+  useVideoOutput,
+  CameraRef,
+  Recorder,
 } from 'react-native-vision-camera';
 import { Video, ResizeMode } from 'expo-av';
 
@@ -69,7 +72,11 @@ export default function CameraScreen() {
   // ── 카메라 디바이스 (기본: 후면 카메라) ───────────────────────────────────
   const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('back');
   const device = useCameraDevice(cameraPosition);
-  const cameraRef = useRef<Camera>(null);
+  const cameraRef = useRef<CameraRef>(null);
+  const recorderRef = useRef<Recorder | null>(null);
+
+  // ── 비디오 아웃풋 (녹화용) ──────────────────────────────────────────────────
+  const videoOutput = useVideoOutput({ enableAudio: true });
 
   // ── 플로우 상태 머신 ────────────────────────────────────────────────────────
   const [flowState, setFlowState] = useState<CameraFlowState>('IDLE');
@@ -114,32 +121,43 @@ export default function CameraScreen() {
 
   /** 녹화 시작 */
   const handleStartRecording = useCallback(async () => {
-    if (!cameraRef.current) return;
-    setFlowState('RECORDING');
-    startTimer();
+    if (!cameraRef.current || !videoOutput) return;
 
-    cameraRef.current.startRecording({
-      onRecordingFinished: (video) => {
-        stopTimer();
-        const duration = video.duration;
-        setRecordedVideo({ uri: video.path, duration });
-        // 트리밍 범위 초기값 = 전체 영상
-        setTrimRange({ startSec: 0, endSec: duration });
-        setFlowState('PREVIEW_EDIT_TIP');
-      },
-      onRecordingError: (error) => {
-        console.error('[녹화 오류]', error);
-        stopTimer();
-        setFlowState('IDLE');
-        Alert.alert('녹화 오류', '녹화 중 오류가 발생했습니다.');
-      },
-    });
-  }, [startTimer, stopTimer]);
+    try {
+      const recorder = await videoOutput.createRecorder({});
+      recorderRef.current = recorder;
+
+      setFlowState('RECORDING');
+      startTimer();
+
+      await recorder.startRecording(
+        (filePath) => {
+          stopTimer();
+          const duration = recorder.recordedDuration;
+          setRecordedVideo({ uri: filePath, duration });
+          // 트리밍 범위 초기값 = 전체 영상
+          setTrimRange({ startSec: 0, endSec: duration });
+          setFlowState('PREVIEW_EDIT_TIP');
+        },
+        (error) => {
+          console.error('[녹화 오류]', error);
+          stopTimer();
+          setFlowState('IDLE');
+          Alert.alert('녹화 오류', '녹화 중 오류가 발생했습니다.');
+        }
+      );
+    } catch (e) {
+      console.error('[레코더 생성 오류]', e);
+      stopTimer();
+      setFlowState('IDLE');
+      Alert.alert('녹화 시작 오류', '녹화를 시작할 수 없습니다.');
+    }
+  }, [startTimer, stopTimer, videoOutput]);
 
   /** 녹화 중지 */
   const handleStopRecording = useCallback(async () => {
-    if (!cameraRef.current) return;
-    await cameraRef.current.stopRecording();
+    if (!recorderRef.current) return;
+    await recorderRef.current.stopRecording();
     resetTimer();
   }, [resetTimer]);
 
@@ -255,8 +273,7 @@ export default function CameraScreen() {
             style={StyleSheet.absoluteFill}
             device={device as CameraDevice}
             isActive={isViewfinder}
-            video
-            audio
+            outputs={[videoOutput]}
           />
           <SafeAreaView style={StyleSheet.absoluteFill} edges={['top', 'bottom']}>
             {/* 상단 UI */}
