@@ -39,6 +39,7 @@ import {
   Camera,
   useCameraDevice,
   useCameraPermission,
+  useMicrophonePermission,
   CameraDevice,
   useVideoOutput,
   CameraRef,
@@ -66,8 +67,11 @@ import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PastVideoSelectionSheet, { PastVideo } from '../components/PastVideoSelectionSheet';
 
 export default function CameraScreen() {
-  // ── 카메라 권한 ────────────────────────────────────────────────────────────
-  const { hasPermission, requestPermission } = useCameraPermission();
+  // ── 권한 관리 (카메라 및 마이크) ──────────────────────────────────────────
+  const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
+  const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission();
+
+  const hasAllPermissions = hasCameraPermission && hasMicrophonePermission;
 
   // ── 카메라 디바이스 (기본: 후면 카메라) ───────────────────────────────────
   const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('back');
@@ -108,11 +112,16 @@ export default function CameraScreen() {
 
   /** 권한 요청 */
   const handleRequestPermission = useCallback(async () => {
-    const granted = await requestPermission();
-    if (!granted) {
-      Alert.alert('카메라 권한 필요', '설정에서 카메라 권한을 허용해주세요.');
+    const cameraGranted = await requestCameraPermission();
+    const microphoneGranted = await requestMicrophonePermission();
+    
+    if (!cameraGranted || !microphoneGranted) {
+      Alert.alert(
+        '권한 필요',
+        '투구 영상을 촬영하려면 카메라 및 마이크 권한이 모두 필요합니다.\n설정에서 권한을 허용해주세요.'
+      );
     }
-  }, [requestPermission]);
+  }, [requestCameraPermission, requestMicrophonePermission]);
 
   /** 카메라 전면/후면 전환 */
   const handleFlipCamera = useCallback(() => {
@@ -218,15 +227,15 @@ export default function CameraScreen() {
   // ────────────────────────────────────────────────────────────────────────────
 
   /** 권한 없을 때 */
-  if (!hasPermission) {
+  if (!hasAllPermissions) {
     return (
       <SafeAreaView className="flex-1 bg-black items-center justify-center px-8">
         <Ionicons name="camera-outline" size={48} color="white" />
         <Text className="text-white text-lg font-bold mt-4 mb-2">
-          카메라 권한이 필요합니다
+          카메라 및 마이크 권한이 필요합니다
         </Text>
         <Text className="text-white/60 text-sm text-center mb-6">
-          투구 영상을 촬영하려면 카메라 접근 권한을 허용해주세요.
+          투구 영상을 촬영하고 소리를 녹음하려면 카메라와 마이크 접근 권한을 모두 허용해주세요.
         </Text>
         <TouchableOpacity
           onPress={handleRequestPermission}
