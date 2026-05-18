@@ -1,60 +1,85 @@
 /**
  * [VideoPreviewTimeline.tsx]
- * 영상 프리뷰 하단 타임라인 스크러버 컴포넌트
+ * 영상 프리뷰 하단 타임라인 컴포넌트
  *
  * 구성:
  *   [──────브랜드색 진행바──────]
- *   00:00:22               00:01:21
+ *   00:22               01:21
  *
- * 현재는 정적 UI입니다. 다음 회차(EDITING 화면)에서
- * 드래그 트리밍 핸들을 추가할 예정입니다.
+ * 부드러운 진행바 구현 원리:
+ *   onPlaybackStatusUpdate는 약 250ms 간격으로 호출되므로
+ *   그대로 쓰면 진행바가 뚝뚝 끊겨 보입니다.
+ *
+ *   해결책: currentTime prop이 바뀔 때마다 Animated.timing으로
+ *   이전 값 → 새 값까지 250ms 동안 선형 보간(lerp)합니다.
+ *   덕분에 업데이트 사이사이도 연속적으로 채워집니다.
  */
 
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Animated } from 'react-native';
 
-/** 초 → "HH:MM:SS" 포맷 함수 */
+/** 초 → "MM:SS" 포맷 함수 */
 function formatTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
+  const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return [h, m, s].map((v) => String(v).padStart(2, '0')).join(':');
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+/** onPlaybackStatusUpdate 호출 주기와 맞춘 보간 시간 (ms)
+ *  expo-av 기본 업데이트 간격이 ~250ms이므로 동일하게 설정 */
+const INTERPOLATION_DURATION_MS = 250;
+
 interface VideoPreviewTimelineProps {
-  /** 현재 재생 시작점 (초) */
-  startTime: number;
+  /** 현재 재생 위치 (초) — onPlaybackStatusUpdate에서 전달 */
+  currentTime: number;
   /** 영상 전체 길이 (초) */
   totalDuration: number;
-  /**
-   * 진행 비율 0~1 (현재 재생 위치 / 전체 길이)
-   * 정적 상태에서는 startTime/totalDuration으로 계산됩니다.
-   */
-  progress?: number;
 }
 
 export default function VideoPreviewTimeline({
-  startTime,
+  currentTime,
   totalDuration,
-  progress,
 }: VideoPreviewTimelineProps) {
-  // progress가 없으면 startTime 기준으로 계산
-  const progressRatio = progress ?? (totalDuration > 0 ? startTime / totalDuration : 0);
+  // 0~1 사이의 진행 비율을 Animated.Value로 관리
+  // 직접 width에 보간해 네이티브 드라이버 없이도 부드럽게 동작
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // totalDuration이 0이면 나누기 오류 방지
+    if (totalDuration <= 0) return;
+
+    const targetRatio = Math.min(currentTime / totalDuration, 1);
+
+    // currentTime이 바뀔 때마다 목표값까지 선형 보간
+    // duration을 업데이트 간격과 동일하게 설정해 딱 맞게 채워지도록 함
+    Animated.timing(progressAnim, {
+      toValue: targetRatio,
+      duration: INTERPOLATION_DURATION_MS,
+      useNativeDriver: false, // width(레이아웃 속성)는 네이티브 드라이버 미지원
+    }).start();
+  }, [currentTime, totalDuration, progressAnim]);
+
+  // progressAnim(0~1)을 퍼센트 문자열로 변환
+  const widthInterpolated = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0%', '100%'],
+    extrapolate: 'clamp',
+  });
 
   return (
     <View className="px-4 pt-2 pb-1">
       {/* ── 진행 바 트랙 ── */}
       <View className="h-1 bg-white/20 rounded-full mb-2 overflow-hidden">
-        <View
+        <Animated.View
           className="h-full bg-brand rounded-full"
-          style={{ width: `${Math.min(progressRatio * 100, 100)}%` }}
+          style={{ width: widthInterpolated }}
         />
       </View>
 
-      {/* ── 시작/끝 타임스탬프 ── */}
+      {/* ── 현재 재생 위치 / 전체 길이 ── */}
       <View className="flex-row justify-between">
         <Text className="text-white/60 text-xs font-medium">
-          {formatTime(startTime)}
+          {formatTime(currentTime)}
         </Text>
         <Text className="text-white/60 text-xs font-medium">
           {formatTime(totalDuration)}
