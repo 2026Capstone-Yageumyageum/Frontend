@@ -13,6 +13,8 @@
  * │                                     │
  * │  [        다음 >         ]          │
  * └─────────────────────────────────────┘
+ *
+ * 인터랙션: 드래그 핸들을 아래로 당기면 시트가 닫힙니다.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -21,10 +23,10 @@ import {
   Text,
   TouchableOpacity,
   Animated,
-  Dimensions,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useDismissibleSheet } from '../hooks/useDismissibleSheet';
 
 const SHEET_HEIGHT = 400;
 
@@ -53,6 +55,13 @@ export default function PastVideoSelectionSheet({
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
+  // 드래그-to-dismiss 훅 (닫기 버튼 탭, 드래그 모두 처리)
+  const { panHandlers, dismiss } = useDismissibleSheet({
+    translateY,
+    sheetHeight: SHEET_HEIGHT,
+    onClose,
+  });
+
   useEffect(() => {
     Animated.spring(translateY, {
       toValue: 0,
@@ -67,14 +76,6 @@ export default function PastVideoSelectionSheet({
     if (selected) {
       onNext(selected);
     }
-  };
-
-  const handleClose = () => {
-    Animated.timing(translateY, {
-      toValue: SHEET_HEIGHT,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => onClose());
   };
 
   return (
@@ -99,18 +100,14 @@ export default function PastVideoSelectionSheet({
           paddingBottom: 24,
         }}
       >
-        {/* 드래그 핸들 */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={handleClose}
-          className="items-center mb-4"
-        >
+        {/* 드래그 핸들: 아래로 당기면 dismiss 호출 */}
+        <View className="items-center mb-4" {...panHandlers}>
           <View className="w-10 h-1 bg-gray-200 rounded-full" />
-        </TouchableOpacity>
+        </View>
 
-        {/* 닫기 버튼 (우측 상단) */}
+        {/* 닫기 버튼 (우측 상단) — dismiss로 애니메이션 닫기 */}
         <TouchableOpacity
-          onPress={handleClose}
+          onPress={dismiss}
           style={{ position: 'absolute', top: 20, right: 20 }}
         >
           <Ionicons name="close" size={24} color="#8E949A" />

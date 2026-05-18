@@ -113,6 +113,10 @@ export default function CameraScreen() {
   // ── 편집 화면 상단 타이머 (트리밍 현재 시간 표시) ─────────────────────────
   const [editCurrentTime, setEditCurrentTime] = useState(0);
 
+  // ── 프리뷰 현재 재생 시간 (프로그레스바 연동용) ───────────────────────────
+  // onPlaybackStatusUpdate로 실시간 업데이트되어 타임라인을 채우는 주체
+  const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+
   // ── 녹화 타이머 훅 ────────────────────────────────────────────────────────
   const { formattedTime, startTimer, stopTimer, resetTimer } = useRecordingTimer();
 
@@ -201,6 +205,7 @@ export default function CameraScreen() {
   const handleRetake = useCallback(() => {
     setRecordedVideo(null);
     setSelectedPitch(null);
+    setPreviewCurrentTime(0); // 프리뷰 시간 초기화
     resetTimer();
     setFlowState('IDLE');
   }, [resetTimer]);
@@ -401,14 +406,19 @@ export default function CameraScreen() {
           ═══════════════════════════════════════════════════════════════════════ */}
       {isPreview && recordedVideo && (
         <>
-          {/* 영상 재생 (프리뷰 + 구종선택 상태 모두 유지) */}
+          {/* 영상 재생: 1회만 재생 (isLooping 제거), 플레이백 상태로 프리뷰 현재 시간 트래킹 */}
           <Video
             source={{ uri: recordedVideo.uri }}
             style={StyleSheet.absoluteFill}
             resizeMode={ResizeMode.COVER}
-            isLooping
             shouldPlay
             isMuted
+            onPlaybackStatusUpdate={(status) => {
+              // 실제 재생 시간을 추적하여 프로그레스바 연동
+              if (status.isLoaded) {
+                setPreviewCurrentTime((status.positionMillis ?? 0) / 1000);
+              }
+            }}
           />
 
           <SafeAreaView style={StyleSheet.absoluteFill} edges={['top', 'bottom']}>
@@ -446,9 +456,8 @@ export default function CameraScreen() {
             {(flowState === 'PREVIEW' || flowState === 'PREVIEW_EDIT_TIP') && (
               <View className="mt-auto pb-6 px-4">
                 <VideoPreviewTimeline
-                  startTime={0}
+                  currentTime={previewCurrentTime}
                   totalDuration={recordedVideo.duration}
-                  progress={0}
                 />
                 <View className="flex-row mt-3" style={{ gap: 10 }}>
                   <TouchableOpacity
@@ -479,12 +488,13 @@ export default function CameraScreen() {
             onSave={handleSaveConfirm}
           />
 
-          {/* ── 구종 선택 바텀시트 (공통_3) ── */}
+          {/* ── 구종 선택 바텀시트 (공통_3): 드래그로 내리면 PREVIEW로 복귀 ── */}
           {flowState === 'PITCH_SELECTION' && (
             <PitchSelectionSheet
               selectedPitch={selectedPitch}
               onSelectPitch={setSelectedPitch}
               onNext={handlePitchNext}
+              onClose={() => setFlowState('PREVIEW')}
             />
           )}
         </>
@@ -579,10 +589,11 @@ export default function CameraScreen() {
             </View>
           </SafeAreaView>
 
-          {/* 최고의 1구 등록 바텀시트 */}
+          {/* 최고의 1구 등록 바텀시트: 드래그로 내리면 PITCH_SELECTION으로 복귀 */}
           <BestPitchRegisterSheet
             pitchType={selectedPitch ?? '직구'}
             onComplete={handleSuccess}
+            onClose={() => setFlowState('PITCH_SELECTION')}
           />
         </>
       )}
