@@ -18,12 +18,14 @@
  * └─────────────────────────────────────────┘
  *
  * 상태 전환: 5 (미선택) → 5-1 (선택됨) — 로컬 state로 관리
+ * 인터랙션: 드래그 핸들을 아래로 당기면 시트가 닫힙니다.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'
 import { PitchType } from '../types/camera.types';
+import { useDismissibleSheet } from '../hooks/useDismissibleSheet';
 
 const SHEET_HEIGHT = 300;
 
@@ -32,17 +34,27 @@ interface BestPitchRegisterSheetProps {
   pitchType: PitchType;
   /** "완료" 버튼 콜백 */
   onComplete: () => void;
+  /** 시트 닫기 콜백 (아래로 드래그 시) */
+  onClose?: () => void;
 }
 
 export default function BestPitchRegisterSheet({
   pitchType,
   onComplete,
+  onClose,
 }: BestPitchRegisterSheetProps) {
   // 5-1 상태: 등록하기 선택 여부
   const [isRegistered, setIsRegistered] = useState(false);
 
   // slide-up 애니메이션
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+
+  // 드래그-to-dismiss 훅
+  const { panHandlers } = useDismissibleSheet({
+    translateY,
+    sheetHeight: SHEET_HEIGHT,
+    onClose: onClose ?? (() => {}),
+  });
 
   useEffect(() => {
     Animated.spring(translateY, {
@@ -77,8 +89,8 @@ export default function BestPitchRegisterSheet({
           paddingBottom: 24,
         }}
       >
-        {/* ── 드래그 핸들 ── */}
-        <View className="items-center mb-4">
+        {/* ── 드래그 핸들: 아래로 당기면 시트 닫힘 ── */}
+        <View className="items-center mb-4" {...panHandlers}>
           <View className="w-10 h-1 bg-gray-200 rounded-full" />
         </View>
 

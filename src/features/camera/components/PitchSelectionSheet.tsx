@@ -14,10 +14,9 @@
  * │  [        다음 >         ]          │
  * └─────────────────────────────────────┘
  *
- * 왜 라이브러리 없이 Animated.View인가요?
- * - @gorhom/bottom-sheet는 별도 네이티브 빌드가 필요합니다.
- * - 간단한 slide-up 애니메이션은 Animated API로 충분하며
- *   의존성을 최소화할 수 있습니다.
+ * 인터랙션:
+ *   - 드래그 핸들을 아래로 당기면 시트가 닫힙니다.
+ *   - 빠른 스와이프(속도 기준) 또는 80px 이상 드래그 시 닫힘.
  */
 
 import React, { useEffect, useRef } from 'react';
@@ -26,14 +25,13 @@ import {
   Text,
   TouchableOpacity,
   Animated,
-  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PitchType } from '../types/camera.types';
+import { useDismissibleSheet } from '../hooks/useDismissibleSheet';
 
 // 바텀시트 높이
 const SHEET_HEIGHT = 360;
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // ─── 구종 목록 ────────────────────────────────────────────────────────────────
 const PITCH_TYPES: PitchType[] = ['직구', '슬라이더', '커브', '체인지업'];
@@ -45,15 +43,26 @@ interface PitchSelectionSheetProps {
   onSelectPitch: (pitch: PitchType) => void;
   /** "다음" 버튼 콜백 */
   onNext: () => void;
+  /** 시트 닫기 콜백 (아래로 드래그 또는 외부에서 닫을 때) */
+  onClose?: () => void;
 }
 
 export default function PitchSelectionSheet({
   selectedPitch,
   onSelectPitch,
   onNext,
+  onClose,
 }: PitchSelectionSheetProps) {
   // 바텀시트 slide-up 애니메이션
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+
+  // 드래그-to-dismiss 훅
+  const { panHandlers, dismiss } = useDismissibleSheet({
+    translateY,
+    sheetHeight: SHEET_HEIGHT,
+    // 닫기 콜백이 없으면 아무 동작 안 함
+    onClose: onClose ?? (() => {}),
+  });
 
   useEffect(() => {
     // 마운트 시 위로 슬라이드
@@ -88,8 +97,8 @@ export default function PitchSelectionSheet({
           paddingBottom: 24,
         }}
       >
-        {/* ── 드래그 핸들 ── */}
-        <View className="items-center mb-4">
+        {/* ── 드래그 핸들: 터치하면 dismiss, 드래그하면 panHandlers가 처리 ── */}
+        <View className="items-center mb-4" {...panHandlers}>
           <View className="w-10 h-1 bg-gray-200 rounded-full" />
         </View>
 

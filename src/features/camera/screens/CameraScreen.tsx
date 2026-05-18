@@ -479,12 +479,13 @@ export default function CameraScreen() {
             onSave={handleSaveConfirm}
           />
 
-          {/* ── 구종 선택 바텀시트 (공통_3) ── */}
+          {/* ── 구종 선택 바텀시트 (공통_3): 드래그로 내리면 PREVIEW로 복귀 ── */}
           {flowState === 'PITCH_SELECTION' && (
             <PitchSelectionSheet
               selectedPitch={selectedPitch}
               onSelectPitch={setSelectedPitch}
               onNext={handlePitchNext}
+              onClose={() => setFlowState('PREVIEW')}
             />
           )}
         </>
@@ -579,10 +580,11 @@ export default function CameraScreen() {
             </View>
           </SafeAreaView>
 
-          {/* 최고의 1구 등록 바텀시트 */}
+          {/* 최고의 1구 등록 바텀시트: 드래그로 내리면 PITCH_SELECTION으로 복귀 */}
           <BestPitchRegisterSheet
             pitchType={selectedPitch ?? '직구'}
             onComplete={handleSuccess}
+            onClose={() => setFlowState('PITCH_SELECTION')}
           />
         </>
       )}
