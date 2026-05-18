@@ -18,16 +18,23 @@ import { View, TouchableOpacity } from 'react-native';
 interface RecordButtonProps {
   isRecording: boolean;
   onPress: () => void;
+  /** 버튼 비활성화 여부 (터치 차단 + 시각적 흐림 처리) */
+  disabled?: boolean;
 }
 
 export default function RecordButton({
   isRecording,
   onPress,
+  disabled = false,
 }: RecordButtonProps) {
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
+      // disabled 상태에서는 터치 이벤트 자체를 차단
+      disabled={disabled}
+      // 불투명도로 비활성화 상태를 시각적으로 표현 (과거 영상 미선택 시 흐릿하게)
+      style={{ opacity: disabled ? 0.35 : 1 }}
       accessibilityLabel={isRecording ? '녹화 중지' : '녹화 시작'}
       accessibilityRole="button"
     >

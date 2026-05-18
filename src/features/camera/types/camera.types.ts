@@ -7,12 +7,16 @@
  * [Flow A - 프로와 비교]
  *   IDLE → RECORDING → PREVIEW_EDIT_TIP → PREVIEW
  *                          → PREVIEW_SAVE_MODAL (저장 아이콘)
+ *                          → [선택] EDITING (편집 버튼)  ← 프로_4 (선택적)
+ *                              → 편집 완료/취소 시 다시 PREVIEW로 복귀
  *                          → PITCH_SELECTION (다음 버튼)  ← 공통_3
- *                              → EDITING (트리밍)          ← 프로_4
- *                                  → SUCCESS               ← 공통_5/5-1
+ *                              → SUCCESS                   ← 공통_5/5-1
  *
  * [Flow B - 내 베스트 투구]
  *   IDLE → SELECTING_PITCH → RECORDING → ... (Flow A와 동일)
+ *
+ * 핵심: 편집(EDITING)은 PREVIEW 단계에서 선택적으로 수행하고,
+ *       완료 후 다시 PREVIEW로 돌아와 "다음" 버튼으로 구종 선택까지 이동한다.
  */
 
 // ─── 카메라 모드 (상단 Toggle) ────────────────────────────────────────────────

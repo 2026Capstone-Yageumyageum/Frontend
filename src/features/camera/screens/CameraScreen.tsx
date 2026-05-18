@@ -9,15 +9,20 @@
  *                                          ┌─────────┴──────────┐
  *                                     (저장아이콘)          (닫기/자동)
  *                                          │                    │
- *                               PREVIEW_SAVE_MODAL          PREVIEW
- *                                          │                    │(다음)
- *                                    (취소/저장)                ▼
- *                                          │           PITCH_SELECTION  [공통_3]
- *                                          │                    │(다음)
- *                                          │                    ▼
- *                                          │              EDITING        [프로_4]
- *                                          │                    │(완료)
- *                                          └──────────────▶ SUCCESS     [공통_5/5-1]
+ *                               PREVIEW_SAVE_MODAL          PREVIEW ◀─────────────────────┐
+ *                                          │             ┌──────┴──────┐                  │
+ *                                    (취소/저장)       (편집)        (다음)                │
+ *                                          │             │              │                  │
+ *                                          │          EDITING     PITCH_SELECTION  [공통_3]│
+ *                                          │             │(완료)        │(다음)            │
+ *                                          │             └──────────────┘──────▶ SUCCESS  │
+ *                                          │                                   [공통_5/5-1]│
+ *                                          └────────────────────────────────────────────── ┘
+ *
+ * 핵심 변경사항:
+ *   - 편집 버튼: PREVIEW → EDITING (편집 먼저 선택적으로 진행)
+ *   - 편집 완료: EDITING → PREVIEW (다시 프리뷰로 복귀)
+ *   - 다음 버튼: PREVIEW → PITCH_SELECTION → SUCCESS (편집 없이도 진행 가능)
  *
  * ── 카메라 라이브러리 ────────────────────────────────────────────────────────
  *   react-native-vision-camera: 카메라 뷰파인더 + 영상 녹화
@@ -26,6 +31,7 @@
  */
 
 import React, { useRef, useState, useCallback } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -67,6 +73,10 @@ import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PastVideoSelectionSheet, { PastVideo } from '../components/PastVideoSelectionSheet';
 
 export default function CameraScreen() {
+  // ── 뒤로가기 네비게이션 ───────────────────────────────────────────────────────
+  // goBack(): 이전 스택 화면 또는 탭으로 이동
+  const navigation = useNavigation();
+
   // ── 권한 관리 (카메라 및 마이크) ──────────────────────────────────────────
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
   const { hasPermission: hasMicrophonePermission, requestPermission: requestMicrophonePermission } = useMicrophonePermission();
@@ -170,11 +180,16 @@ export default function CameraScreen() {
     resetTimer();
   }, [resetTimer]);
 
-  /** 녹화 버튼 탭 (IDLE → RECORDING / RECORDING → stop) */
+  /** 녹화 버튼 탭 (IDLE → RECORDING / RECORDING → stop)
+   *  내 베스트 투구 모드에서 과거 영상을 선택하지 않으면 핸들러 자체를 차단
+   *  (UI의 disabled prop과 이중으로 막아 어떤 경로로도 녹화 시작 불가) */
   const handleRecordButtonPress = useCallback(() => {
+    // 내 베스트 투구 모드에서 과거 영상 미선택 시 녹화 차단
+    if (cameraMode === 'my' && selectedPastVideo === null) return;
+
     if (flowState === 'IDLE') handleStartRecording();
     else if (flowState === 'RECORDING') handleStopRecording();
-  }, [flowState, handleStartRecording, handleStopRecording]);
+  }, [flowState, cameraMode, selectedPastVideo, handleStartRecording, handleStopRecording]);
 
   /** 과거 영상 선택 다음 버튼 (Flow B) */
   const handlePastVideoNext = useCallback((video: PastVideo) => {
@@ -201,19 +216,25 @@ export default function CameraScreen() {
   /** 편집 툴팁 닫기 */
   const handleDismissTooltip = useCallback(() => setFlowState('PREVIEW'), []);
 
-  /** 프리뷰 "다음" → 구종 선택 */
+  /** 프리뷰 "편집" 버튼 → 영상 편집 화면으로 이동 */
+  const handleEditPress = useCallback(() => setFlowState('EDITING'), []);
+
+  /** 프리뷰 "다음" → 구종 선택
+   *  (편집 없이도 다음으로 진행 가능, 편집을 먼저 해도 여기서 다음을 눌러야 함) */
   const handlePreviewNext = useCallback(() => setFlowState('PITCH_SELECTION'), []);
 
-  /** 구종 선택 "다음" → 트리밍 편집 */
+  /** 구종 선택 "다음" → 바로 최고의 1구 등록 (SUCCESS)
+   *  편집은 PREVIEW 단계에서 선택적으로 먼저 수행하므로, 여기서는 바로 SUCCESS로 */
   const handlePitchNext = useCallback(() => {
     if (!selectedPitch) return;
-    setFlowState('EDITING');
+    setFlowState('SUCCESS');
   }, [selectedPitch]);
 
-  /** 트리밍 편집 "완료" → 성공 화면 */
-  const handleEditingComplete = useCallback(() => setFlowState('SUCCESS'), []);
+  /** 트리밍 편집 "완료" → 프리뷰로 복귀
+   *  편집 완료 후 다시 프리뷰 화면으로 돌아와서 "다음" 버튼으로 구종 선택까지 이동 */
+  const handleEditingComplete = useCallback(() => setFlowState('PREVIEW'), []);
 
-  /** 트리밍 편집 "X" → 재촬영으로 돌아감 */
+  /** 트리밍 편집 "X" → 프리뷰로 복귀 (편집 취소) */
   const handleEditingClose = useCallback(() => setFlowState('PREVIEW'), []);
 
   /** 최고의 1구 등록 "완료" → IDLE 리셋 (다음에 분석 로딩 화면 추가 예정) */
@@ -266,6 +287,11 @@ export default function CameraScreen() {
   const isEditing = flowState === 'EDITING';
   const isSuccess = flowState === 'SUCCESS';
 
+  // ── 녹화 버튼 비활성화 조건 ──────────────────────────────────────────────
+  // '내 베스트 투구' 모드에서 과거 영상을 선택하지 않으면 녹화를 막아
+  // (Flow B: 승인 없이 덕직 의미 없는 로 아이콘 생성 방지)
+  const isRecordDisabled = cameraMode === 'my' && selectedPastVideo === null;
+
   // ── 편집 화면 상단 타이머 텍스트 ─────────────────────────────────────────
   const editTimerText = `${String(Math.floor(editCurrentTime / 60)).padStart(2, '0')}:${String(Math.floor(editCurrentTime % 60)).padStart(2, '0')}`;
 
@@ -289,9 +315,10 @@ export default function CameraScreen() {
             <View className="px-4 pt-2">
               {flowState === 'IDLE' && (
                 <>
+                  {/* X 버튼: 카메라 화면을 닫고 이전 탭/화면으로 뒤로가기 */}
                   <TouchableOpacity
                     className="w-9 h-9 rounded-full bg-black/40 items-center justify-center mb-3"
-                    onPress={() => {}}
+                    onPress={() => navigation.goBack()}
                   >
                     <Ionicons name="close" size={18} color="white" />
                   </TouchableOpacity>
@@ -349,6 +376,8 @@ export default function CameraScreen() {
                 <RecordButton
                   isRecording={flowState === 'RECORDING'}
                   onPress={handleRecordButtonPress}
+                  // '내 베스트 투구' 모드에서 과거 영상 미선택 시 비활성화
+                  disabled={isRecordDisabled}
                 />
                 <TouchableOpacity onPress={handleFlipCamera} activeOpacity={0.7}>
                   <Ionicons name="camera-reverse-outline" size={28} color="white" />
@@ -391,7 +420,8 @@ export default function CameraScreen() {
               >
                 <Ionicons name="close" size={18} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity activeOpacity={0.7}>
+              {/* 편집 버튼: PREVIEW → EDITING 상태로 전환 */}
+              <TouchableOpacity onPress={handleEditPress} activeOpacity={0.7}>
                 <Text className="text-white text-base font-semibold">편집</Text>
               </TouchableOpacity>
             </View>
