@@ -180,11 +180,16 @@ export default function CameraScreen() {
     resetTimer();
   }, [resetTimer]);
 
-  /** 녹화 버튼 탭 (IDLE → RECORDING / RECORDING → stop) */
+  /** 녹화 버튼 탭 (IDLE → RECORDING / RECORDING → stop)
+   *  내 베스트 투구 모드에서 과거 영상을 선택하지 않으면 핸들러 자체를 차단
+   *  (UI의 disabled prop과 이중으로 막아 어떤 경로로도 녹화 시작 불가) */
   const handleRecordButtonPress = useCallback(() => {
+    // 내 베스트 투구 모드에서 과거 영상 미선택 시 녹화 차단
+    if (cameraMode === 'my' && selectedPastVideo === null) return;
+
     if (flowState === 'IDLE') handleStartRecording();
     else if (flowState === 'RECORDING') handleStopRecording();
-  }, [flowState, handleStartRecording, handleStopRecording]);
+  }, [flowState, cameraMode, selectedPastVideo, handleStartRecording, handleStopRecording]);
 
   /** 과거 영상 선택 다음 버튼 (Flow B) */
   const handlePastVideoNext = useCallback((video: PastVideo) => {
@@ -282,6 +287,11 @@ export default function CameraScreen() {
   const isEditing = flowState === 'EDITING';
   const isSuccess = flowState === 'SUCCESS';
 
+  // ── 녹화 버튼 비활성화 조건 ──────────────────────────────────────────────
+  // '내 베스트 투구' 모드에서 과거 영상을 선택하지 않으면 녹화를 막아
+  // (Flow B: 승인 없이 덕직 의미 없는 로 아이콘 생성 방지)
+  const isRecordDisabled = cameraMode === 'my' && selectedPastVideo === null;
+
   // ── 편집 화면 상단 타이머 텍스트 ─────────────────────────────────────────
   const editTimerText = `${String(Math.floor(editCurrentTime / 60)).padStart(2, '0')}:${String(Math.floor(editCurrentTime % 60)).padStart(2, '0')}`;
 
@@ -366,6 +376,8 @@ export default function CameraScreen() {
                 <RecordButton
                   isRecording={flowState === 'RECORDING'}
                   onPress={handleRecordButtonPress}
+                  // '내 베스트 투구' 모드에서 과거 영상 미선택 시 비활성화
+                  disabled={isRecordDisabled}
                 />
                 <TouchableOpacity onPress={handleFlipCamera} activeOpacity={0.7}>
                   <Ionicons name="camera-reverse-outline" size={28} color="white" />
