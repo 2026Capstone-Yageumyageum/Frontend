@@ -38,6 +38,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -52,6 +53,7 @@ import {
   Recorder,
 } from 'react-native-vision-camera';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
+import * as ImagePicker from 'expo-image-picker';
 
 import {
   CameraFlowState,
@@ -349,6 +351,71 @@ export default function CameraScreen() {
     handleRetake();
   }, [handleRetake]);
 
+  /**
+   * 갤러리에서 영상 선택 후 프리뷰 플로우로 진입
+   *
+   * 처리 흐름:
+   *   1. GALLERY_PICKING 상태로 전환 (로딩 표시)
+   *   2. expo-image-picker로 갤러리 영상 피커 열기
+   *   3. 선택 완료 → recordedVideo 세팅 → PREVIEW_EDIT_TIP 전환
+   *   4. 취소 또는 오류 → IDLE 복귀
+   *
+   * ⚠️ expo-image-picker는 duration을 밀리초(ms) 단위로 반환함
+   *    → recordedVideo.duration은 초(sec) 단위이므로 /1000 변환 필요
+   */
+  const handlePickVideoFromGallery = useCallback(async () => {
+    // 갤러리 피커 열기 전 상태 전환 (뷰파인더 유지하면서 로딩 표시)
+    setFlowState('GALLERY_PICKING');
+
+    try {
+      // 갤러리 미디어 접근 권한 요청
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert(
+          '갤러리 권한 필요',
+          '갤러리에서 영상을 선택하려면 사진 라이브러리 접근 권한이 필요합니다.\n설정에서 권한을 허용해주세요.'
+        );
+        setFlowState('IDLE');
+        return;
+      }
+
+      // 갤러리 영상 선택 피커 실행
+      // mediaTypes: 'videos' — 영상 파일만 표시
+      // allowsEditing: false — 선택 후 자체 편집 화면 없이 바로 가져옴
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'videos',
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      // 사용자가 선택을 취소한 경우
+      if (result.canceled) {
+        setFlowState('IDLE');
+        return;
+      }
+
+      const asset = result.assets[0];
+
+      // duration: expo-image-picker는 밀리초(ms) 단위로 반환
+      // → 초(sec) 단위로 변환해서 RecordedVideo에 저장
+      const durationSec = asset.duration != null ? asset.duration / 1000 : 0;
+
+      // recordedVideo 세팅 — 기존 녹화 완료 시와 동일한 구조
+      setRecordedVideo({ uri: asset.uri, duration: durationSec });
+
+      // 트리밍 범위 초기값 = 갤러리 영상 전체 구간
+      setTrimRange({ startSec: 0, endSec: durationSec });
+
+      // 녹화 완료 시와 동일하게 PREVIEW_EDIT_TIP으로 전환
+      // → 기존 프리뷰 → 편집 → 구종선택 → 등록 플로우 그대로 사용 가능
+      setFlowState('PREVIEW_EDIT_TIP');
+    } catch (error) {
+      console.error('[갤러리 영상 선택 오류]', error);
+      Alert.alert('오류', '영상을 불러오는 중 오류가 발생했습니다.');
+      setFlowState('IDLE');
+    }
+  }, []);
+
   // ────────────────────────────────────────────────────────────────────────────
   // 렌더링 분기
   // ────────────────────────────────────────────────────────────────────────────
@@ -384,7 +451,8 @@ export default function CameraScreen() {
   }
 
   // ── 상태 그룹 ─────────────────────────────────────────────────────────────
-  const isViewfinder = flowState === 'IDLE' || flowState === 'RECORDING' || flowState === 'SELECTING_PITCH';
+  // GALLERY_PICKING: 갤러리 피커가 열려있는 동안 카메라 뷰파인더는 유지
+  const isViewfinder = flowState === 'IDLE' || flowState === 'RECORDING' || flowState === 'SELECTING_PITCH' || flowState === 'GALLERY_PICKING';
   const isPreview =
     flowState === 'PREVIEW' ||
     flowState === 'PREVIEW_EDIT_TIP' ||
@@ -481,7 +549,11 @@ export default function CameraScreen() {
                 </View>
               )}
               <View className="flex-row items-center justify-between px-10">
-                <TouchableOpacity activeOpacity={0.7}>
+                {/* 앨범 버튼: 갤러리에서 영상을 선택해 기존 프리뷰 플로우로 진입 */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handlePickVideoFromGallery}
+                >
                   <Ionicons name="image-outline" size={28} color="white" />
                 </TouchableOpacity>
                 <RecordButton
@@ -503,6 +575,26 @@ export default function CameraScreen() {
               onClose={() => setFlowState('IDLE')}
               onNext={handlePastVideoNext}
             />
+          )}
+
+          {/* ── 갤러리 영상 선택 중 로딩 오버레이 ── */}
+          {/* 피커가 열리기 직전 잠깐 표시되며, 피커가 열리면 네이티브 UI가 덮어씀 */}
+          {flowState === 'GALLERY_PICKING' && (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                },
+              ]}
+            >
+              <ActivityIndicator size="large" color="#3BC1A8" />
+              <Text style={{ color: 'white', marginTop: 12, fontSize: 14 }}>
+                갤러리를 불러오는 중...
+              </Text>
+            </View>
           )}
         </>
       )}
