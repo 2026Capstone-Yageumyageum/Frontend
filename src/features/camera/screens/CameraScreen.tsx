@@ -71,6 +71,7 @@ import PitchSelectionSheet from '../components/PitchSelectionSheet';
 import VideoTrimmerTimeline from '../components/VideoTrimmerTimeline';
 import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PastVideoSelectionSheet, { PastVideo } from '../components/PastVideoSelectionSheet';
+import PitcherGuideBox from '../components/PitcherGuideBox';
 
 export default function CameraScreen() {
   // ── 뒤로가기 네비게이션 ───────────────────────────────────────────────────────
@@ -315,6 +316,11 @@ export default function CameraScreen() {
             isActive={isViewfinder}
             outputs={[videoOutput]}
           />
+
+          {/* 투수 포지셔닝 가이드 박스:
+              카메라 위에 절대 위치로 오버레이, 터치 이벤트는 통과시킴
+              IDLE(촬영 전) + RECORDING(촬영 중) 모두에서 표시 */}
+          <PitcherGuideBox isRecording={flowState === 'RECORDING'} />
           <SafeAreaView style={StyleSheet.absoluteFill} edges={['top', 'bottom']}>
             {/* 상단 UI */}
             <View className="px-4 pt-2">
