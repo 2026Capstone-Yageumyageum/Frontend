@@ -35,7 +35,8 @@ export type CameraFlowState =
   | 'PREVIEW_SAVE_MODAL' // 카메라_공통_2-2: 프리뷰 + 저장 확인 모달
   | 'PITCH_SELECTION'    // 카메라_공통_3: 구종 선택 바텀시트
   | 'EDITING'            // 카메라_프로_4: 영상 트리밍/편집
-  | 'SUCCESS';           // 카메라_공통_5/5-1: 최고의 1구 등록 결과
+  | 'SUCCESS'            // 카메라_공통_5/5-1: 최고의 1구 등록 결과
+  | 'GALLERY_PICKING';   // 갤러리에서 영상 선택 중 (로딩 오버레이 표시용)
 
 // ─── 녹화 완료 후 영상 정보 ──────────────────────────────────────────────────
 export interface RecordedVideo {
