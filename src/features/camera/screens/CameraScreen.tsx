@@ -113,6 +113,11 @@ export default function CameraScreen() {
   // ── 트리밍 범위 (EDITING 상태에서 관리) ───────────────────────────────────
   const [trimRange, setTrimRange] = useState<TrimRange>({ startSec: 0, endSec: 0 });
 
+  // ── 영상 소스 구분 ────────────────────────────────────────────────────────
+  // true: 갤러리에서 업로드한 영상 / false: 직접 촬영한 영상
+  // 갤러리 영상은 이미 저장된 파일이므로 저장 버튼을 비활성화해야 함
+  const [isFromGallery, setIsFromGallery] = useState(false);
+
   // ── 편집 화면 상단 타이머 (트리밍 현재 시간 표시) ─────────────────────────
   const [editCurrentTime, setEditCurrentTime] = useState(0);
 
@@ -221,6 +226,7 @@ export default function CameraScreen() {
     setRecordedVideo(null);
     setSelectedPitch(null);
     setPreviewCurrentTime(0); // 프리뷰 시간 초기화
+    setIsFromGallery(false);  // 영상 소스 초기화
     resetTimer();
     setFlowState('IDLE');
   }, [resetTimer]);
@@ -405,6 +411,9 @@ export default function CameraScreen() {
 
       // 트리밍 범위 초기값 = 갤러리 영상 전체 구간
       setTrimRange({ startSec: 0, endSec: durationSec });
+
+      // 갤러리에서 온 영상임을 표시 → 저장 버튼 비활성화 + 재선택 텍스트 적용
+      setIsFromGallery(true);
 
       // 녹화 완료 시와 동일하게 PREVIEW_EDIT_TIP으로 전환
       // → 기존 프리뷰 → 편집 → 구종선택 → 등록 플로우 그대로 사용 가능
@@ -631,11 +640,15 @@ export default function CameraScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* 저장 아이콘 */}
+            {/* 저장 아이콘
+                갤러리에서 업로드한 영상은 이미 기기에 저장되어 있으므로 저장 불필요
+                → isFromGallery일 때 투명도를 낮추고 터치를 차단하여 비활성화 표시 */}
             <View className="px-4 mt-2">
               <TouchableOpacity
-                onPress={handleSaveIconPress}
+                onPress={isFromGallery ? undefined : handleSaveIconPress}
+                disabled={isFromGallery}
                 className="w-9 h-9 rounded-full bg-black/40 items-center justify-center"
+                style={{ opacity: isFromGallery ? 0.3 : 1 }}
               >
                 <Ionicons name="download-outline" size={18} color="white" />
               </TouchableOpacity>
@@ -662,7 +675,10 @@ export default function CameraScreen() {
                     activeOpacity={0.8}
                     className="flex-1 bg-white/10 rounded-2xl py-4 items-center"
                   >
-                    <Text className="text-white text-sm font-semibold">재촬영</Text>
+                    {/* 갤러리 업로드 영상이면 '재선택', 직접 촬영이면 '재촬영' */}
+                    <Text className="text-white text-sm font-semibold">
+                      {isFromGallery ? '재선택' : '재촬영'}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handlePreviewNext}
