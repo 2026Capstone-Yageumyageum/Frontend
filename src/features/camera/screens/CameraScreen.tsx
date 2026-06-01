@@ -30,7 +30,7 @@
  *   ⚠️ 반드시 `npx expo run:android` 또는 `npx expo run:ios`로 빌드 후 사용
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   View,
@@ -51,7 +51,7 @@ import {
   CameraRef,
   Recorder,
 } from 'react-native-vision-camera';
-import { Video, ResizeMode } from 'expo-av';
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 
 import {
   CameraFlowState,
@@ -117,6 +117,18 @@ export default function CameraScreen() {
   // ── 프리뷰 현재 재생 시간 (프로그레스바 연동용) ───────────────────────────
   // onPlaybackStatusUpdate로 실시간 업데이트되어 타임라인을 채우는 주체
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+
+  // ── 편집 화면 비디오 ref (seek, 재생 제어용) ──────────────────────────────
+  // isEditing 상태에서만 마운트되므로, EDITING이 아닐 때는 null
+  const editingVideoRef = useRef<Video>(null);
+  // PREVIEW / SUCCESS 화면 비디오 ref (트림 구간 루프 제어용)
+  const previewVideoRef = useRef<Video>(null);
+  const successVideoRef = useRef<Video>(null);
+
+  // trimRange를 ref로도 관리 (onPlaybackStatusUpdate 클로저 내 최신값 참조)
+  // 렌더마다 동기화하여 stale closure 방지
+  const trimRangeRef = useRef(trimRange);
+  trimRangeRef.current = trimRange;
 
   // ── 녹화 타이머 훅 ────────────────────────────────────────────────────────
   const { formattedTime, startTimer, stopTimer, resetTimer } = useRecordingTimer();
@@ -242,6 +254,94 @@ export default function CameraScreen() {
 
   /** 트리밍 편집 "X" → 프리뷰로 복귀 (편집 취소) */
   const handleEditingClose = useCallback(() => setFlowState('PREVIEW'), []);
+
+  /** 트리밍 핸들 드래그로 범위 변경
+   *  VideoTrimmerTimeline → CameraScreen으로 최신 trimRange 전달 */
+  const handleTrimChange = useCallback((startSec: number, endSec: number) => {
+    setTrimRange({ startSec, endSec });
+  }, []);
+
+  /** 핸들 드래그 중 비디오 특정 시간으로 탐색
+   *  editingVideoRef.setPositionAsync: expo-av Video ref의 seek API */
+  const handleEditSeekRequest = useCallback(async (seconds: number) => {
+    if (editingVideoRef.current) {
+      await editingVideoRef.current.setPositionAsync(seconds * 1000);
+    }
+  }, []);
+
+  /** 편집 화면 재생 상태 업데이트 핸들러
+   *  - 현재 재생 시간 → editCurrentTime 업데이트
+   *  - trimEnd 도달 시 trimStart로 루프 (선택 구간 내에서만 반복 재생)
+   *  - trimRangeRef 사용으로 stale closure 완전 방지 */
+  const handleEditPlaybackStatus = useCallback(async (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
+
+    const currentSec = (status.positionMillis ?? 0) / 1000;
+    setEditCurrentTime(currentSec);
+
+    // 트림 끝 지점 도달 시 시작점으로 루프
+    if (status.isPlaying && currentSec >= trimRangeRef.current.endSec) {
+      await editingVideoRef.current?.setPositionAsync(
+        trimRangeRef.current.startSec * 1000
+      );
+    }
+  }, []);
+
+  /** 프리뷰 영상 재생 상태 업데이트 — 트림 구간 적용
+   *  ① 트림 시작점 기준 상대 시간으로 프로그레스바 업데이트
+   *  ② 트림 범위 벗어나면 startSec으로 즉시 이동 (루프 + 범위 이탈 방지)
+   *  trimRangeRef 사용으로 stale closure 완전 방지 */
+  const handlePreviewPlaybackStatus = useCallback(async (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
+    const absoluteSec = (status.positionMillis ?? 0) / 1000;
+    // 트림 시작점 기준 상대 시간 계산 (프로그레스바가 0부터 시작하도록)
+    const relativeSec = Math.max(0, absoluteSec - trimRangeRef.current.startSec);
+    setPreviewCurrentTime(relativeSec);
+
+    // 트림 끝 초과 or 시작 이전 → trimStart로 이동
+    if (status.isPlaying &&
+        (absoluteSec >= trimRangeRef.current.endSec ||
+         absoluteSec < trimRangeRef.current.startSec)) {
+      await previewVideoRef.current?.setPositionAsync(
+        trimRangeRef.current.startSec * 1000
+      );
+    }
+  }, []);
+
+  /** 성공 화면 영상 재생 상태 업데이트 — 트림 구간 내 루프 */
+  const handleSuccessPlaybackStatus = useCallback(async (status: AVPlaybackStatus) => {
+    if (!status.isLoaded) return;
+    const absoluteSec = (status.positionMillis ?? 0) / 1000;
+    if (status.isPlaying &&
+        (absoluteSec >= trimRangeRef.current.endSec ||
+         absoluteSec < trimRangeRef.current.startSec)) {
+      await successVideoRef.current?.setPositionAsync(
+        trimRangeRef.current.startSec * 1000
+      );
+    }
+  }, []);
+
+  // PREVIEW 계열 진입 시 trimStart에서 재생 시작 (편집 완료 후 바로 반영)
+  // onPlaybackStatusUpdate의 범위 이탈 감지도 있지만,
+  // Video 마운트 직후 즉시 올바른 위치에서 시작하도록 useEffect로 이중 보장
+  useEffect(() => {
+    if (flowState === 'PREVIEW' || flowState === 'PREVIEW_EDIT_TIP') {
+      const timer = setTimeout(() => {
+        previewVideoRef.current?.setPositionAsync(trimRangeRef.current.startSec * 1000);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [flowState]);
+
+  // SUCCESS 진입 시 trimStart에서 재생 시작
+  useEffect(() => {
+    if (flowState === 'SUCCESS') {
+      const timer = setTimeout(() => {
+        successVideoRef.current?.setPositionAsync(trimRangeRef.current.startSec * 1000);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [flowState]);
 
   /** 최고의 1구 등록 "완료" → IDLE 리셋 (다음에 분석 로딩 화면 추가 예정) */
   const handleSuccess = useCallback(() => {
@@ -412,19 +512,16 @@ export default function CameraScreen() {
           ═══════════════════════════════════════════════════════════════════════ */}
       {isPreview && recordedVideo && (
         <>
-          {/* 영상 재생: 1회만 재생 (isLooping 제거), 플레이백 상태로 프리뷰 현재 시간 트래킹 */}
+          {/* 영상 재생: 트림 구간 내에서만 재생 + 루프
+              ref: seek 제어 / handlePreviewPlaybackStatus: 트림 루프 + 상대 시간 추적 */}
           <Video
+            ref={previewVideoRef}
             source={{ uri: recordedVideo.uri }}
             style={StyleSheet.absoluteFill}
             resizeMode={ResizeMode.COVER}
             shouldPlay
             isMuted
-            onPlaybackStatusUpdate={(status) => {
-              // 실제 재생 시간을 추적하여 프로그레스바 연동
-              if (status.isLoaded) {
-                setPreviewCurrentTime((status.positionMillis ?? 0) / 1000);
-              }
-            }}
+            onPlaybackStatusUpdate={handlePreviewPlaybackStatus}
           />
 
           <SafeAreaView style={StyleSheet.absoluteFill} edges={['top', 'bottom']}>
@@ -462,8 +559,10 @@ export default function CameraScreen() {
             {(flowState === 'PREVIEW' || flowState === 'PREVIEW_EDIT_TIP') && (
               <View className="mt-auto pb-6 px-4">
                 <VideoPreviewTimeline
+                  // 트림 구간 기준 상대 시간 (0부터 시작)
                   currentTime={previewCurrentTime}
-                  totalDuration={recordedVideo.duration}
+                  // 실제 재생 구간 길이 (트림된 범위)
+                  totalDuration={Math.max(0, trimRange.endSec - trimRange.startSec)}
                 />
                 <View className="flex-row mt-3" style={{ gap: 10 }}>
                   <TouchableOpacity
@@ -511,20 +610,16 @@ export default function CameraScreen() {
           ═══════════════════════════════════════════════════════════════════════ */}
       {isEditing && recordedVideo && (
         <>
-          {/* 트리밍할 영상 전체 화면 재생 */}
+          {/* 트리밍할 영상 전체 화면 재생
+              ref: seek 제어 / shouldPlay: 자동 재생 / isLooping 제거 → 수동 루프 처리 */}
           <Video
+            ref={editingVideoRef}
             source={{ uri: recordedVideo.uri }}
             style={StyleSheet.absoluteFill}
             resizeMode={ResizeMode.COVER}
-            isLooping
             shouldPlay
             isMuted
-            onPlaybackStatusUpdate={(status) => {
-              // 현재 재생 시간을 타이머에 반영
-              if (status.isLoaded) {
-                setEditCurrentTime((status.positionMillis ?? 0) / 1000);
-              }
-            }}
+            onPlaybackStatusUpdate={handleEditPlaybackStatus}
           />
 
           <SafeAreaView style={StyleSheet.absoluteFill} edges={['top', 'bottom']}>
@@ -559,6 +654,9 @@ export default function CameraScreen() {
                 trimStart={trimRange.startSec}
                 trimEnd={trimRange.endSec}
                 currentTime={editCurrentTime}
+                // 핸들 드래그 → trimRange 업데이트 + 비디오 seek
+                onTrimChange={handleTrimChange}
+                onSeekRequest={handleEditSeekRequest}
               />
             </View>
           </SafeAreaView>
@@ -570,14 +668,15 @@ export default function CameraScreen() {
           ═══════════════════════════════════════════════════════════════════════ */}
       {isSuccess && recordedVideo && (
         <>
-          {/* 결과 영상 (배경으로 재생) */}
+          {/* 결과 영상: 트림 구간 내에서 루프 재생 (편집 완료 후 적용된 구간만 보여줌) */}
           <Video
+            ref={successVideoRef}
             source={{ uri: recordedVideo.uri }}
             style={StyleSheet.absoluteFill}
             resizeMode={ResizeMode.COVER}
-            isLooping
             shouldPlay
             isMuted
+            onPlaybackStatusUpdate={handleSuccessPlaybackStatus}
           />
 
           {/* 상단: X + 편집 */}
