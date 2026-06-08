@@ -54,6 +54,10 @@ import {
 } from 'react-native-vision-camera';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from 'expo-media-library';
+// Expo SDK 54부터 기존 API가 deprecated 되어 legacy 경로로 import해야 합니다.
+// 새 API(File/Directory 클래스)로 마이그레이션하기 전까지 이 경로를 사용합니다.
+import * as FileSystem from 'expo-file-system/legacy';
 
 import {
   CameraFlowState,
@@ -176,6 +180,10 @@ export default function CameraScreen() {
       await recorder.startRecording(
         (filePath) => {
           stopTimer();
+          // [디버그] vision-camera가 반환하는 실제 파일 경로 확인
+          // 이 로그로 URI 형태(확장자 유무, file:// 여부 등)를 파악합니다
+          console.log('[녹화 완료] filePath 원본:', filePath);
+          console.log('[녹화 완료] filePath 타입:', typeof filePath);
           const duration = recorder.recordedDuration;
           setRecordedVideo({ uri: filePath, duration });
           // 트리밍 범위 초기값 = 전체 영상
@@ -235,9 +243,85 @@ export default function CameraScreen() {
   const handleSaveIconPress = useCallback(() => setFlowState('PREVIEW_SAVE_MODAL'), []);
   const handleSaveCancel = useCallback(() => setFlowState('PREVIEW'), []);
   const handleSaveConfirm = useCallback(async () => {
-    Alert.alert('저장 완료', '영상이 갤러리에 저장되었습니다.');
-    setFlowState('PREVIEW');
-  }, []);
+    if (!recordedVideo?.uri) return;
+
+    let tempCopiedUri: string | null = null;
+
+    try {
+      // 1. 미디어 라이브러리 접근 권한 요청
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          '권한 필요',
+          '영상을 저장하려면 사진/동영상 접근 권한이 필요합니다.\n설정에서 권한을 허용해주세요.'
+        );
+        setFlowState('PREVIEW');
+        return;
+      }
+
+      const originalUri = recordedVideo.uri;
+
+      // [디버그] 저장 시도 전 URI 정보 출력 — 에러 원인 추적용
+      console.log('[영상 저장] 원본 URI:', originalUri);
+
+      // 2. vision-camera가 반환하는 URI는 OS/버전마다 형태가 다릅니다.
+      //    saveToLibraryAsync()는 file:// 프리픽스가 없는 절대 경로를 요구하는 경우가 있어
+      //    프리픽스를 제거한 순수 경로로 정규화합니다.
+      const normalizedUri = originalUri.startsWith('file://')
+        ? originalUri
+        : `file://${originalUri}`;
+
+      // 3. 파일이 실제로 존재하는지 먼저 확인 (없으면 copyAsync도 실패)
+      const fileInfo = await FileSystem.getInfoAsync(normalizedUri);
+      console.log('[영상 저장] 파일 정보:', JSON.stringify(fileInfo));
+
+      if (!fileInfo.exists) {
+        throw new Error(`파일이 존재하지 않습니다: ${normalizedUri}`);
+      }
+
+      // 4. 확장자가 없으면 .mp4 확장자를 붙인 임시 경로로 복사
+      //    saveToLibraryAsync()가 확장자를 파싱해 파일 타입을 결정하기 때문에 필수
+      const lowerUri = normalizedUri.toLowerCase();
+      const hasExtension =
+        lowerUri.includes('.mp4') ||
+        lowerUri.includes('.mov') ||
+        lowerUri.includes('.m4v');
+
+      let uriToSave = normalizedUri;
+
+      if (!hasExtension) {
+        const timestamp = Date.now();
+        tempCopiedUri = `${FileSystem.cacheDirectory}recorded_video_${timestamp}.mp4`;
+        await FileSystem.copyAsync({
+          from: normalizedUri,
+          to: tempCopiedUri,
+        });
+        uriToSave = tempCopiedUri;
+        console.log('[영상 저장] 확장자 없는 URI → .mp4로 복사 완료:', tempCopiedUri);
+      }
+
+      console.log('[영상 저장] saveToLibraryAsync 호출 URI:', uriToSave);
+
+      // 5. 갤러리에 저장
+      await MediaLibrary.saveToLibraryAsync(uriToSave);
+
+      Alert.alert('저장 완료', '영상이 갤러리에 저장되었습니다.');
+      setFlowState('PREVIEW');
+    } catch (error) {
+      // 상세 에러 정보 출력 — Expo 개발자 도구나 adb logcat에서 확인 가능
+      console.error('[영상 저장 오류] 에러 타입:', typeof error);
+      console.error('[영상 저장 오류] 상세:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+      Alert.alert('저장 실패', '영상을 저장하는 중 문제가 발생했습니다.\n콘솔 로그를 확인해주세요.');
+      setFlowState('PREVIEW');
+    } finally {
+      // 임시 복사본은 성공/실패와 무관하게 항상 정리
+      if (tempCopiedUri) {
+        await FileSystem.deleteAsync(tempCopiedUri, { idempotent: true }).catch(
+          (e) => console.warn('[임시 파일 삭제 실패]', e)
+        );
+      }
+    }
+  }, [recordedVideo]);
 
   /** 편집 툴팁 닫기 */
   const handleDismissTooltip = useCallback(() => setFlowState('PREVIEW'), []);
