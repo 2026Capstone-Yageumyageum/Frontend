@@ -48,8 +48,11 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "투구 영상을 업로드하기 위해 사진 라이브러리에 접근합니다.",
-          "cameraPermission": false
+          // expo-image-picker에서 cameraPermission: false를 설정하면
+          // tools:node="remove"가 AndroidManifest에 삽입되어
+          // react-native-vision-camera의 카메라 권한까지 제거해버립니다.
+          // 이미지 피커에서 카메라를 사용하지 않더라도 이 옵션은 제거합니다.
+          "photosPermission": "투구 영상을 업로드하기 위해 사진 라이브러리에 접근합니다."
         }
       ],
       [
