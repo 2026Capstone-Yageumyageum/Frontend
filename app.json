@@ -8,9 +8,9 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/adaptive-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#3BC1A8"
     },
     "ios": {
       "supportsTablet": true,
@@ -58,6 +58,14 @@
           "photosPermission": "촬영한 투구 영상을 갤러리에 저장합니다.",
           "savePhotosPermission": "촬영한 투구 영상을 갤러리에 저장합니다.",
           "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#3BC1A8"
         }
       ]
     ]
