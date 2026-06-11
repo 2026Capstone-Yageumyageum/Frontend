@@ -106,8 +106,8 @@ export default function FeedScreen() {
   );
 
   return (
-    // SafeAreaView: 노치/홈 인디케이터 영역 자동 처리
-    <SafeAreaView className="flex-1 bg-surface-page">
+    // SafeAreaView: 노치/홈 인디케이터 영역 자동 처리 (bottom 제외하여 탭바 카메라 버튼과 자연스럽게 겹치게 함)
+    <SafeAreaView className="flex-1 bg-surface-page" edges={['top', 'left', 'right']}>
       {/* ── 상단 탭 토글 (스크롤에 고정) ── */}
       <View className="bg-surface border-b border-border">
         <SegmentedToggle
