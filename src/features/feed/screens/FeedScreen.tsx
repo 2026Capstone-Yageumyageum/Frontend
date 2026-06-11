@@ -19,18 +19,22 @@ import React from 'react';
 import { View, Text, FlatList, ListRenderItem } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 import SegmentedToggle from '../components/SegmentedToggle';
 import FilterChipList from '../components/FilterChipList';
 import ProMatchingCard from '../components/ProMatchingCard';
 import ConsistencyCard from '../components/ConsistencyCard';
 import { useFeedFilter } from '../hooks/useFeedFilter';
 import { ProFeedItem, ConsistencyFeedItem } from '../types/feed.types';
+import FilterBottomSheet from '../components/FilterBottomSheet';
 
 // ─── 탭 레이블 상수 ──────────────────────────────────────────────────────────
 const TAB_LABELS = { pro: '프로 선수', consistency: '일관성' };
 const TABS = [TAB_LABELS.pro, TAB_LABELS.consistency];
 
 export default function FeedScreen() {
+  useDoubleBackExit();
+
   const {
     activeTab,
     setActiveTab,

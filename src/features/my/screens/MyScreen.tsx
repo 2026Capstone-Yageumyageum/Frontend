@@ -59,7 +59,11 @@ function MonthIcon() {
   );
 }
 
+import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
+
 export default function MyScreen() {
+  useDoubleBackExit();
+  
   const profile = MOCK_USER_PROFILE;
 
   return (

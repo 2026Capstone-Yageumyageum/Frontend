@@ -73,13 +73,19 @@ import RecordingTimer from '../components/RecordingTimer';
 import VideoPreviewTimeline from '../components/VideoPreviewTimeline';
 import EditTooltip from '../components/EditTooltip';
 import SaveVideoModal from '../components/SaveVideoModal';
+import CameraTimer from '../components/CameraTimer';
+import PitcherGuideBox from '../components/PitcherGuideBox';
+import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PitchSelectionSheet from '../components/PitchSelectionSheet';
 import VideoTrimmerTimeline from '../components/VideoTrimmerTimeline';
-import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PastVideoSelectionSheet, { PastVideo } from '../components/PastVideoSelectionSheet';
-import PitcherGuideBox from '../components/PitcherGuideBox';
+import { useCameraFlow } from '../hooks/useCameraFlow';
+import { usePitchAnalysis } from '../hooks/usePitchAnalysis';
+import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 
 export default function CameraScreen() {
+  useDoubleBackExit();
+
   // ── 뒤로가기 네비게이션 ───────────────────────────────────────────────────────
   // goBack(): 이전 스택 화면 또는 탭으로 이동
   const navigation = useNavigation();
