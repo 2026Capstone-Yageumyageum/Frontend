@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../../types/navigation';
 import ReportHeader from '../components/ReportHeader';
 import ReportTabs from '../components/ReportTabs';
 import ReportSummaryCard from '../components/ReportSummaryCard';
@@ -13,13 +15,18 @@ import AppText from '../../../components/common/AppText';
 import { MOCK_REPORT_DATA, MOCK_COMPARE_PLAYERS } from '../data/report.mockdata';
 
 export default function ReportScreen() {
+  const route = useRoute<RouteProp<RootStackParamList, 'Report'>>();
   const [activeTab, setActiveTab] = useState<'timeline' | 'insight'>('timeline');
   const [selectedPlayer, setSelectedPlayer] = useState(MOCK_COMPARE_PLAYERS[0]);
   const [isSheetVisible, setSheetVisible] = useState(false);
 
+  // 라우트 파라미터에서 베스트 피칭 여부 확인 (기본값 false)
+  const isBestPitch = route.params?.isBestPitch ?? false;
+
   // 현재 선택된 선수에 맞춰 데이터 갱신 (실제 연동시엔 API에서 재호출 또는 스토어 사용)
   const currentData = {
     ...MOCK_REPORT_DATA,
+    isBestPitch,
     overallSimilarity: selectedPlayer.similarity,
     comparePlayer: selectedPlayer,
   };

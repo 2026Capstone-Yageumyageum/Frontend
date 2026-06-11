@@ -15,5 +15,5 @@ export type RootStackParamList = {
     email: string;
   };
   Home: undefined; // 로그인 완료 후 메인 화면 (추후 구현)
-  Report: undefined; // AI 분석 결과 리포트 화면
+  Report: { isBestPitch?: boolean } | undefined; // AI 분석 결과 리포트 화면
 };
