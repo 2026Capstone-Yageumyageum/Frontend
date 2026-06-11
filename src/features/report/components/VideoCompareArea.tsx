@@ -16,7 +16,7 @@ export default function VideoCompareArea({ score, isSingleVideo }: VideoCompareA
   return (
     <View className="px-5 mt-4">
       {/* 영상 영역 */}
-      <View className="flex-row justify-center mb-4">
+      <View key={isSingleVideo ? 'single' : 'double'} className="flex-row justify-center mb-4">
         {isSingleVideo ? (
           <View className="w-[60%] rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 9/16 }} />
         ) : (

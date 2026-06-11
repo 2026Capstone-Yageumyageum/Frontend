@@ -46,24 +46,22 @@ export default function ReportScreen() {
           onPressPlayer={() => setSheetVisible(true)} 
         />
 
+        {/* 비디오 및 타임라인 컨트롤 (공통) */}
+        <VideoCompareArea 
+          score={currentData.overallSimilarity} 
+          isSingleVideo={activeTab === 'insight'} 
+        />
+
         {/* 탭별 콘텐츠 */}
         {activeTab === 'timeline' ? (
-          <View>
-            {/* 비디오 및 타임라인 컨트롤 */}
-            <VideoCompareArea score={currentData.overallSimilarity} />
-
+          <View className="mt-2">
             {/* 구간별 피드백 리스트 */}
-            <View className="mt-2">
-              {currentData.feedbacks.map((feedback, index) => (
-                <PhaseFeedback key={index} data={feedback} />
-              ))}
-            </View>
+            {currentData.feedbacks.map((feedback, index) => (
+              <PhaseFeedback key={index} data={feedback} />
+            ))}
           </View>
         ) : (
           <View>
-            {/* 비디오 및 타임라인 컨트롤 (단일 영상 모드) */}
-            <VideoCompareArea score={currentData.overallSimilarity} isSingleVideo={true} />
-            
             {/* 인사이트 탭의 새로운 콘텐츠 */}
             <PhaseScoreCard scores={currentData.insight.phaseScores} />
             <ReleaseAnalysisCard 
