@@ -54,8 +54,8 @@ export default function ReportScreen() {
           </View>
         ) : (
           <View>
-            {/* 비디오 및 타임라인 컨트롤 (인사이트 탭에서도 동일하게 표시됨) */}
-            <VideoCompareArea score={currentData.overallSimilarity} />
+            {/* 비디오 및 타임라인 컨트롤 (단일 영상 모드) */}
+            <VideoCompareArea score={currentData.overallSimilarity} isSingleVideo={true} />
             
             {/* 인사이트 탭의 새로운 콘텐츠 */}
             <PhaseScoreCard scores={currentData.insight.phaseScores} />

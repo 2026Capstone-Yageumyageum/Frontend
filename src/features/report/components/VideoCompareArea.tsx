@@ -5,9 +5,10 @@ import AppText from '../../../components/common/AppText';
 
 interface VideoCompareAreaProps {
   score: number;
+  isSingleVideo?: boolean;
 }
 
-export default function VideoCompareArea({ score }: VideoCompareAreaProps) {
+export default function VideoCompareArea({ score, isSingleVideo }: VideoCompareAreaProps) {
   const isGoodScore = score >= 70;
   // 타임라인 색상 (이미지 참고)
   const timelineColor = isGoodScore ? '#A3C8BC' : '#DCA876';
@@ -15,13 +16,17 @@ export default function VideoCompareArea({ score }: VideoCompareAreaProps) {
   return (
     <View className="px-5 mt-4">
       {/* 영상 영역 */}
-      <View className="flex-row justify-between mb-4">
-        {/* 내 영상 (왼쪽) */}
-        <View className="flex-1 mr-2 rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 3/4 }} />
-        {/* 프로 선수 영상 (오른쪽) */}
-        <View className="flex-1 ml-2 rounded-2xl bg-[#191825]" style={{ aspectRatio: 3/4 }}>
-          {/* 비디오 썸네일 예시 UI 요소 (재생시간 등) 추가 가능 */}
-        </View>
+      <View className="flex-row justify-center mb-4">
+        {isSingleVideo ? (
+          <View className="w-[60%] rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 3/4 }} />
+        ) : (
+          <>
+            {/* 내 영상 (왼쪽) */}
+            <View className="flex-1 mr-2 rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 3/4 }} />
+            {/* 프로 선수 영상 (오른쪽) */}
+            <View className="flex-1 ml-2 rounded-2xl bg-[#191825]" style={{ aspectRatio: 3/4 }} />
+          </>
+        )}
       </View>
 
       {/* 컨트롤 및 타임라인 */}
