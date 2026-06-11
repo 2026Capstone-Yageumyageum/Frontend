@@ -18,14 +18,6 @@ export default function ReportHeader() {
         <AppText weight="medium" className="text-text-primary text-base ml-1">뒤로가기</AppText>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        className="flex-row items-center" 
-        onPress={() => navigation.navigate('Home' as never)}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="home-outline" size={18} color="#1A1C20" />
-        <AppText weight="medium" className="text-text-primary text-sm ml-1">홈으로</AppText>
-      </TouchableOpacity>
     </View>
   );
 }
