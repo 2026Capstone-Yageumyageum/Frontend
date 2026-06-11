@@ -54,8 +54,8 @@ const SIZE_STYLES: Record<ButtonSize, string> = {
 // variant별 활성/비활성 컨테이너 색상
 const CONTAINER_STYLES: Record<ButtonVariant, { active: string; disabled: string }> = {
   primary: {
-    active: 'bg-blue-600',
-    disabled: 'bg-blue-300',
+    active: 'bg-brand',
+    disabled: 'bg-[#E8EAEC]',
   },
   secondary: {
     active: 'bg-gray-100',
@@ -70,7 +70,7 @@ const CONTAINER_STYLES: Record<ButtonVariant, { active: string; disabled: string
 
 // variant별 텍스트 색상
 const TEXT_STYLES: Record<ButtonVariant, { active: string; disabled: string }> = {
-  primary: { active: 'text-white font-semibold', disabled: 'text-white font-semibold' },
+  primary: { active: 'text-white font-semibold', disabled: 'text-[#9CA3AF] font-semibold' },
   secondary: { active: 'text-gray-800 font-semibold', disabled: 'text-gray-300 font-semibold' },
   outlined: { active: 'text-blue-600 font-semibold', disabled: 'text-gray-300 font-semibold' },
 };

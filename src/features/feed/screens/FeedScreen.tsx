@@ -26,7 +26,6 @@ import ProMatchingCard from '../components/ProMatchingCard';
 import ConsistencyCard from '../components/ConsistencyCard';
 import { useFeedFilter } from '../hooks/useFeedFilter';
 import { ProFeedItem, ConsistencyFeedItem } from '../types/feed.types';
-import FilterBottomSheet from '../components/FilterBottomSheet';
 
 // ─── 탭 레이블 상수 ──────────────────────────────────────────────────────────
 const TAB_LABELS = { pro: '프로 선수', consistency: '일관성' };
