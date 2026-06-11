@@ -119,14 +119,15 @@ export default function TabNavigator() {
 // NativeWind가 tabBarIcon 내부에 미적용되어 StyleSheet 사용
 const styles = StyleSheet.create({
   cameraButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 56,
+    height: 56,
+    borderRadius: 30,
     backgroundColor: BRAND_COLOR,
     alignItems: 'center',
     justifyContent: 'center',
-    // 버튼이 탭바를 살짝 넘어 올라오는 효과
+    // 버튼이 탭바를 살짝 넘어 올라오는 효과 (아이콘만 위로 이동)
     marginBottom: 12,
+    transform: [{ translateY: -10 }],
     shadowColor: BRAND_COLOR,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
