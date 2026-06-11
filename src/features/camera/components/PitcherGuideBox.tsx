@@ -48,7 +48,7 @@ export default function PitcherGuideBox({ isRecording }: PitcherGuideBoxProps) {
 
   // 아랫변 위치 고정
   // 기존: BOX_TOP(height*0.16) + BOX_HEIGHT(height*0.60) = height*0.76
-  const BOX_BOTTOM_EDGE = height * 0.76;
+  const BOX_BOTTOM_EDGE = height * 0.72;
 
   // 윗변: 기존 gap(≈0~10px)의 5배 이상인 ~50px 간격으로 아래로 내림
   // 토글 버튼 하단(≈ height*0.19) 기준 + height*0.06(약 50px) 여백
