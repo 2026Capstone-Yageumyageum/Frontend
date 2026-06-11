@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { TouchableOpacity, ActivityIndicator, View } from 'react-native';
+import AppText from './AppText';
 
 // ─────────────────────────────────────────────
 //  타입 정의
@@ -29,6 +30,11 @@ type ButtonProps = {
   onPress: () => void;
   disabled?: boolean;
   loading?: boolean;
+  /**
+   * outlined variant의 테두리·텍스트 색상을 호출부에서 직접 지정할 때 사용.
+   * 미입력 시 기본값(파란색 #2563EB) 유지 → 기존 버튼에 영향 없음.
+   */
+  accentColor?: string;
 };
 
 // ─────────────────────────────────────────────
@@ -87,22 +93,46 @@ export default function Button({
   onPress,
   disabled = false,
   loading = false,
+  accentColor,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
-  const containerClass = [
-    SIZE_STYLES[size],
-    isDisabled ? CONTAINER_STYLES[variant].disabled : CONTAINER_STYLES[variant].active,
-  ].join(' ');
+  // ─── accentColor 처리 ───────────────────────────────────────────────────
+  // NativeWind(Tailwind)의 className은 style prop보다 높은 우선순위로 적용됨.
+  // 따라서 style={{ borderColor }} 만으로는 border-blue-600 클래스를 이길 수 없음.
+  // 해결책: accentColor가 있을 때 className에서 border-blue-600을 직접 제거하고,
+  //         borderColor는 style prop으로만 제어해 충돌을 없앰.
+  const shouldUseAccent = Boolean(accentColor && variant === 'outlined' && !isDisabled);
+
+  const baseVariantClass = isDisabled
+    ? CONTAINER_STYLES[variant].disabled
+    : CONTAINER_STYLES[variant].active;
+
+  // accentColor 사용 시 Tailwind의 border-2(굵기)와 border-blue-600(색상) 클래스를 모두 제거.
+  // 굵기·색상 모두 style prop으로만 단독 제어해야 NativeWind와 충돌이 없음.
+  const resolvedVariantClass = shouldUseAccent
+    ? baseVariantClass.replace('border-1', '').replace('border-blue-600', '').trim()
+    : baseVariantClass;
+
+  const containerClass = [SIZE_STYLES[size], resolvedVariantClass].join(' ');
 
   const textClass = [
     'text-sm',
     isDisabled ? TEXT_STYLES[variant].disabled : TEXT_STYLES[variant].active,
   ].join(' ');
 
+  // borderWidth: 1 → 기본 border-2(2px)보다 얇은 1px 테두리
+  // borderColor: accentColor → 지정된 색상 적용
+  const accentBorderStyle =
+    shouldUseAccent ? { borderWidth: 1, borderColor: accentColor } : undefined;
+
+  const accentTextStyle =
+    shouldUseAccent ? { color: accentColor } : undefined;
+
   return (
     <TouchableOpacity
       className={containerClass}
+      style={accentBorderStyle}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.8}
@@ -117,10 +147,15 @@ export default function Button({
           {/* 아이콘 - 가이드라인에 맞춰 상하좌우 18dp 여백 고정 */}
           {icon && <View style={{ margin: 18 }}>{icon}</View>}
           {/* 라벨 - 가이드라인에 맞춰 좌우 8dp 여백 고정 */}
+          {/* weight="semibold": 버튼 라벨은 Pretendard-SemiBold로 시각적 세기가 적절함 */}
           {label && (
-            <Text className={textClass} style={{ marginHorizontal: 8 }}>
+            <AppText
+              weight="semibold"
+              className={textClass}
+              style={{ marginHorizontal: 8, ...accentTextStyle }}
+            >
               {label}
-            </Text>
+            </AppText>
           )}
         </>
       )}

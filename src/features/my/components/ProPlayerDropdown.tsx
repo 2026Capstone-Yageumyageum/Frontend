@@ -15,7 +15,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import { ProPlayerOption } from '../types/my.types';
 
@@ -48,11 +49,11 @@ export default function ProPlayerDropdown({
         <View className="flex-row items-center" style={{ gap: 10 }}>
           {/* 선수 이니셜 원형 배지 */}
           <View className="w-8 h-8 rounded-full bg-brand items-center justify-center">
-            <Text className="text-white text-xs font-bold">{selected.initial}</Text>
+            <AppText weight="bold" className="text-white text-xs">{selected.initial}</AppText>
           </View>
-          <Text className="text-text-primary text-sm font-medium">
+          <AppText weight="medium" className="text-text-primary text-sm">
             {selected.name}
-          </Text>
+          </AppText>
         </View>
 
         {/* 열림/닫힘 화살표 */}
@@ -85,19 +86,18 @@ export default function ProPlayerDropdown({
               } ${selected.id === player.id ? 'bg-brand-light' : 'bg-surface'}`}
             >
               <View className="w-8 h-8 rounded-full bg-brand items-center justify-center mr-3">
-                <Text className="text-white text-xs font-bold">
-                  {player.initial}
-                </Text>
+                <AppText weight="bold" className="text-white text-xs">
+                {player.initial}
+              </AppText>
               </View>
-              <Text
-                className={`text-sm font-medium ${
-                  selected.id === player.id
-                    ? 'text-brand'
-                    : 'text-text-primary'
+              <AppText
+                weight="medium"
+                className={`text-sm ${
+                  selected.id === player.id ? 'text-brand' : 'text-text-primary'
                 }`}
               >
                 {player.name}
-              </Text>
+              </AppText>
             </TouchableOpacity>
           ))}
         </View>

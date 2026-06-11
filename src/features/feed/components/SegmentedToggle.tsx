@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 
 // ─── Props 타입 ─────────────────────────────────────────────────────────────
 interface SegmentedToggleProps {
@@ -42,15 +43,14 @@ export default function SegmentedToggle({
             className="mr-6"
           >
             {/* 탭 텍스트: 활성 탭은 강조 컬러 + 볼드 처리 */}
-            <Text
+            <AppText
+              weight={isActive ? 'bold' : 'medium'}
               className={`text-base pb-2 ${
-                isActive
-                  ? 'text-text-primary font-bold'
-                  : 'text-text-secondary font-medium'
+                isActive ? 'text-text-primary' : 'text-text-secondary'
               }`}
             >
               {tab}
-            </Text>
+            </AppText>
 
             {/* 활성 탭 하단 인디케이터 바 */}
             <View

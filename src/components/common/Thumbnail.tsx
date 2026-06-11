@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet } from 'react-native';
+import AppText from './AppText';
 
 // ─────────────────────────────────────────────
 //  타입 정의
@@ -68,7 +69,7 @@ export default function Thumbnail({
 function Badge({ label }: { label: string }) {
   return (
     <View style={styles.badge}>
-      <Text style={styles.badgeText}>{label}</Text>
+      <AppText weight="bold" style={styles.badgeText}>{label}</AppText>
     </View>
   );
 }

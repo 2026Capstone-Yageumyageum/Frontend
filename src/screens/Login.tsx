@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Image } from 'react-native';
+import AppText from '../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/common/Button';
 import GoogleIcon from '../assets/GoogleIcon';
@@ -121,7 +122,14 @@ export default function Login() {
         />
 
         {/* 서브 카피 문구 */}
-        <Text
+        {/*
+          [수정 이유]
+          - alignItems / justifyContent 는 View 전용 속성 → Text에 적용 시 작동 안 함
+          - 부모 View에 alignItems:'center'에 의해 Text 너비가 콘텐츠만큼 수축됨
+          - 해결: alignSelf:'stretch'로 부모 너비 100% 확보 + textAlign:'center'로 가운데 정렬
+        */}
+        <AppText
+          weight="medium"
           style={{
             marginTop: 12,
             color: 'white',
@@ -132,7 +140,7 @@ export default function Login() {
           }}
         >
           내 손안의 작은 AI 투수 코치
-        </Text>
+        </AppText>
       </View>
 
       {/* ── 하단 영역: 흰색 배경 + 소셜 로그인 ── */}
@@ -150,22 +158,24 @@ export default function Login() {
         }}
       >
         {/* 섹션 타이틀 */}
-        <Text style={{ fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center' }}>
+        <AppText weight="bold" style={{ fontSize: 24, color: '#111827', textAlign: 'center' }}>
           시작하기
-        </Text>
+        </AppText>
 
         {/* 설명 문구 */}
-        <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
+        <AppText style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
           소셜 계정으로 간편하게 로그인하세요
-        </Text>
+        </AppText>
 
         {/* Google 로그인 버튼 */}
+        {/* accentColor: 이 버튼만 테두리·텍스트를 검정(#000000)으로 표시, 다른 버튼엔 영향 없음 */}
         <Button
           size="long"
           variant="outlined"
           label="Google로 계속하기"
           onPress={handleGoogleLogin}
           icon={<GoogleIcon size={20} />}
+          accentColor="#000000"
         />
       </View>
     </SafeAreaView>

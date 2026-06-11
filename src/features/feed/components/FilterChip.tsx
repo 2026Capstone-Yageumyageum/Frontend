@@ -10,7 +10,8 @@
  */
 
 import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 
 // ─── Props 타입 ─────────────────────────────────────────────────────────────
 interface FilterChipProps {
@@ -38,11 +39,9 @@ export default function FilterChip({
         isSelected ? 'bg-brand' : 'bg-surface-overlay'
       }`}
     >
-      <Text
-        className="text-white text-sm font-medium"
-      >
+      <AppText weight="medium" className="text-white text-sm">
         {label}
-      </Text>
+      </AppText>
     </TouchableOpacity>
   );
 }

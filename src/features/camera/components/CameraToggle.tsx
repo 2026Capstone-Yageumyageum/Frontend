@@ -9,7 +9,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { CameraMode } from '../types/camera.types';
 
 interface CameraToggleProps {
@@ -40,13 +41,14 @@ export default function CameraToggle({
               isActive ? 'bg-white' : 'bg-transparent'
             }`}
           >
-            <Text
-              className={`text-sm font-semibold ${
+            <AppText
+              weight="semibold"
+              className={`text-sm ${
                 isActive ? 'text-gray-900' : 'text-white/70'
               }`}
             >
               {label}
-            </Text>
+            </AppText>
           </TouchableOpacity>
         );
       })}

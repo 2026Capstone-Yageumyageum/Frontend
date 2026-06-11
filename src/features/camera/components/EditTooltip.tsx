@@ -9,7 +9,8 @@
  */
 
 import React, { useEffect } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 
 interface EditTooltipProps {
   /** 툴팁 닫기 콜백 (탭 시 또는 자동 닫힘 시 호출) */
@@ -39,9 +40,9 @@ export default function EditTooltip({
         className="bg-brand px-4 py-3 max-w-52"
         style={{ borderRadius: 14 }}
       >
-        <Text className="text-white text-sm font-medium leading-5">
+        <AppText weight="medium" className="text-white text-sm leading-5">
           편집 버튼으로 영상을{'\n'}자유롭게 수정할 수 있어요!
-        </Text>
+        </AppText>
 
         {/* 말풍선 꼬리 (우측 상단 방향) */}
         <View
