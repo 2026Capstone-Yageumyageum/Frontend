@@ -18,6 +18,7 @@
 import React from 'react';
 import { View, Text, FlatList, ListRenderItem } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import SegmentedToggle from '../components/SegmentedToggle';
 import FilterChipList from '../components/FilterChipList';
 import ProMatchingCard from '../components/ProMatchingCard';
@@ -39,6 +40,7 @@ export default function FeedScreen() {
     filteredProFeeds,
     filteredConsistencyFeeds,
   } = useFeedFilter();
+  const navigation = useNavigation();
 
   // 현재 탭에 맞는 피드 데이터와 제목 텍스트
   const isProTab = activeTab === 'pro';
@@ -83,8 +85,8 @@ export default function FeedScreen() {
     <ProMatchingCard
       item={item}
       onPress={(selected) => {
-        // TODO: 상세 화면 네비게이션 연결
-        console.log('선택된 피드:', selected.id);
+        // @ts-ignore - Report 화면은 RootStack에 정의됨
+        navigation.navigate('Report');
       }}
     />
   );

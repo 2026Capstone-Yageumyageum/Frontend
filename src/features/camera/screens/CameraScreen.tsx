@@ -435,11 +435,13 @@ export default function CameraScreen() {
     }
   }, [flowState]);
 
-  /** 최고의 1구 등록 "완료" → IDLE 리셋 (다음에 분석 로딩 화면 추가 예정) */
+  /** 최고의 1구 등록 "완료" → Report 화면으로 이동 */
   const handleSuccess = useCallback(() => {
     Alert.alert('등록 완료', '소중한 1구가 기록되었습니다!');
     handleRetake();
-  }, [handleRetake]);
+    // @ts-ignore - Report 스크린이 Root 스택에 정의되어 있음
+    navigation.navigate('Report');
+  }, [handleRetake, navigation]);
 
   /**
    * 갤러리에서 영상 선택 후 프리뷰 플로우로 진입
