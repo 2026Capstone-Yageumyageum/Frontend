@@ -13,11 +13,6 @@
  * │    또는                       │
  * │ [ConsistencyCard] × N        │
  * └──────────────────────────────┘
- *
- * 설계 포인트:
- * - FlatList를 사용해 길어지는 카드 목록을 효율적으로 렌더링합니다.
- * - ListHeaderComponent로 필터/제목 영역을 고정하면
- *   카드 목록과 함께 스크롤되는 자연스러운 UX를 제공합니다.
  */
 
 import React from 'react';
@@ -66,8 +61,8 @@ export default function FeedScreen() {
       </View>
 
       {/* 섹션 제목 (예: "나의 투구 기록 11") */}
-      <View className="px-5 pt-2 pb-3">
-        <Text className="text-text-primary text-lg font-bold">
+      <View className="px-2 pt-2 pb-3">
+        <Text className="text-text-primary text-xl font-semibold">
           {sectionTitle}
         </Text>
       </View>
