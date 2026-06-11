@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, TextInput, Alert } from 'react-native';
+import { View, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import AppText from '../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -9,12 +9,10 @@ import Button from '../components/common/Button';
 import { signupWithNickname } from '../api/authApi';
 import { saveTokens } from '../utils/token';
 
-// 이 화면은 Login → Signup으로 이동할 때 { email } 파라미터를 받습니다.
 type SignupScreenRouteProp = RouteProp<RootStackParamList, 'Signup'>;
 
 export default function Signup() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  // useRoute로 이전 화면(Login)에서 넘겨준 email 파라미터를 읽습니다.
   const route = useRoute<SignupScreenRouteProp>();
   const { email } = route.params;
 
@@ -22,31 +20,23 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async () => {
-    // 닉네임 입력값 검증
     const trimmedNickname = nickname.trim();
-    if (!trimmedNickname) {
-      Alert.alert('알림', '닉네임을 입력해주세요.');
-      return;
-    }
-    if (trimmedNickname.length < 2 || trimmedNickname.length > 10) {
-      Alert.alert('알림', '닉네임은 2~10자 사이로 입력해주세요.');
+    if (trimmedNickname.length < 2 || trimmedNickname.length > 12) {
+      Alert.alert('알림', '닉네임은 2~12자 사이로 입력해주세요.');
       return;
     }
 
     setIsLoading(true);
     try {
-      // 백엔드에 이메일 + 닉네임 전달
       const result = await signupWithNickname(email, trimmedNickname);
       console.log('[닉네임 등록 성공]', result);
 
-      // 토큰 저장
       if (result.accessToken && result.refreshToken) {
         await saveTokens(result.accessToken, result.refreshToken);
       }
 
-      Alert.alert('가입 완료', `${trimmedNickname}님, 환영합니다!`, [
-        { text: '확인', onPress: () => navigation.navigate('Home') },
-      ]);
+      // 등록 완료 안내창 제거, 바로 네비게이션
+      navigation.navigate('Home');
     } catch (error) {
       console.error('[닉네임 등록 실패]', error);
       Alert.alert('오류', '닉네임 등록에 실패했습니다. 다시 시도해주세요.');
@@ -56,35 +46,54 @@ export default function Signup() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6 justify-center" style={{ gap: 24 }}>
-        {/* 제목 영역 */}
-        <View style={{ gap: 8 }}>
-          <AppText weight="bold" className="text-2xl text-gray-900">
-            닉네임을 설정해주세요
-          </AppText>
-          <AppText className="text-sm text-gray-500">가입 계정: {email}</AppText>
+    <SafeAreaView className="flex-1 bg-surface-page" edges={['top', 'bottom']}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        className="flex-1"
+      >
+        <View className="flex-1 px-5 pt-12 pb-5">
+          {/* 상단 텍스트 영역 */}
+          <View className="mb-10">
+            <AppText weight="bold" className="text-[28px] text-text-primary mb-3" style={{ lineHeight: 38, letterSpacing: -0.5 }}>
+              Fitch에서{'\n'}사용할 닉네임을{'\n'}알려주세요
+            </AppText>
+            <AppText className="text-sm text-text-secondary">
+              언제든지 프로필에서 변경할 수 있어요
+            </AppText>
+          </View>
+
+          {/* 닉네임 입력 필드 */}
+          <View className="flex-1">
+            <AppText weight="bold" className="text-sm text-text-primary mb-2 ml-1">
+              닉네임
+            </AppText>
+            <View className="flex-row items-center border border-border bg-white rounded-xl px-4 py-4">
+              <TextInput
+                className="flex-1 text-base text-text-primary font-pretendard"
+                placeholder="닉네임 입력 (2~12자)"
+                placeholderTextColor="#9CA3AF"
+                value={nickname}
+                onChangeText={setNickname}
+                maxLength={12}
+                autoFocus
+              />
+              <AppText className="text-sm text-[#9CA3AF] ml-2">
+                {nickname.length}/12
+              </AppText>
+            </View>
+          </View>
+
+          {/* 시작하기 버튼 */}
+          <Button
+            size="long"
+            variant="primary"
+            label="시작하기"
+            onPress={handleSignup}
+            disabled={nickname.trim().length < 2 || isLoading}
+            loading={isLoading}
+          />
         </View>
-
-        {/* 닉네임 입력 필드 */}
-        <TextInput
-          className="border border-gray-300 rounded-xl px-4 py-3 text-base text-gray-900"
-          placeholder="닉네임 (2~10자)"
-          placeholderTextColor="#9CA3AF"
-          value={nickname}
-          onChangeText={setNickname}
-          maxLength={10}
-          autoFocus
-        />
-
-        {/* 확인 버튼 */}
-        <Button
-          size="long"
-          variant="primary"
-          label={isLoading ? '등록 중...' : '시작하기'}
-          onPress={handleSignup}
-        />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

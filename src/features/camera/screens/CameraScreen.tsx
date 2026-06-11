@@ -73,13 +73,19 @@ import RecordingTimer from '../components/RecordingTimer';
 import VideoPreviewTimeline from '../components/VideoPreviewTimeline';
 import EditTooltip from '../components/EditTooltip';
 import SaveVideoModal from '../components/SaveVideoModal';
+import CameraTimer from '../components/CameraTimer';
+import PitcherGuideBox from '../components/PitcherGuideBox';
+import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PitchSelectionSheet from '../components/PitchSelectionSheet';
 import VideoTrimmerTimeline from '../components/VideoTrimmerTimeline';
-import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PastVideoSelectionSheet, { PastVideo } from '../components/PastVideoSelectionSheet';
-import PitcherGuideBox from '../components/PitcherGuideBox';
+import { useCameraFlow } from '../hooks/useCameraFlow';
+import { usePitchAnalysis } from '../hooks/usePitchAnalysis';
+import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 
 export default function CameraScreen() {
+  useDoubleBackExit();
+
   // ── 뒤로가기 네비게이션 ───────────────────────────────────────────────────────
   // goBack(): 이전 스택 화면 또는 탭으로 이동
   const navigation = useNavigation();
@@ -435,12 +441,11 @@ export default function CameraScreen() {
     }
   }, [flowState]);
 
-  /** 최고의 1구 등록 "완료" → Report 화면으로 이동 */
+  /** 최고의 1구 등록 "완료" → 분석 대기 화면으로 이동 */
   const handleSuccess = useCallback(() => {
-    Alert.alert('등록 완료', '소중한 1구가 기록되었습니다!');
     handleRetake();
-    // @ts-ignore - Report 스크린이 Root 스택에 정의되어 있음
-    navigation.navigate('Report', { isBestPitch: true });
+    // @ts-ignore - AnalysisLoading 스크린이 Root 스택에 정의되어 있음
+    navigation.navigate('AnalysisLoading', { isBestPitch: true });
   }, [handleRetake, navigation]);
 
   /**
