@@ -20,8 +20,9 @@ export default function ReportScreen() {
   const [selectedPlayer, setSelectedPlayer] = useState(MOCK_COMPARE_PLAYERS[0]);
   const [isSheetVisible, setSheetVisible] = useState(false);
 
-  // 라우트 파라미터에서 베스트 피칭 여부 확인 (기본값 false)
+  // 라우트 파라미터에서 정보 읽기
   const isBestPitch = route.params?.isBestPitch ?? false;
+  const reportType = route.params?.reportType ?? 'pro'; // 기본값 'pro'
 
   // 현재 선택된 선수에 맞춰 데이터 갱신 (실제 연동시엔 API에서 재호출 또는 스토어 사용)
   const currentData = {
@@ -43,6 +44,7 @@ export default function ReportScreen() {
         {/* 상단 요약 카드 */}
         <ReportSummaryCard 
           data={currentData} 
+          reportType={reportType}
           onPressPlayer={() => setSheetVisible(true)} 
         />
 
@@ -57,7 +59,7 @@ export default function ReportScreen() {
           <View className="mt-2">
             {/* 구간별 피드백 리스트 */}
             {currentData.feedbacks.map((feedback, index) => (
-              <PhaseFeedback key={index} data={feedback} />
+              <PhaseFeedback key={index} data={feedback} reportType={reportType} />
             ))}
           </View>
         ) : (
@@ -67,6 +69,7 @@ export default function ReportScreen() {
             <ReleaseAnalysisCard 
               timing={currentData.insight.releaseTiming} 
               point={currentData.insight.releasePoint} 
+              reportType={reportType}
             />
           </View>
         )}

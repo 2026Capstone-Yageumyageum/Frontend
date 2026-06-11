@@ -6,9 +6,10 @@ import { ReleaseTiming, ReleasePoint } from '../types/report.types';
 interface ReleaseAnalysisCardProps {
   timing: ReleaseTiming;
   point: ReleasePoint;
+  reportType?: 'pro' | 'me';
 }
 
-export default function ReleaseAnalysisCard({ timing, point }: ReleaseAnalysisCardProps) {
+export default function ReleaseAnalysisCard({ timing, point, reportType = 'pro' }: ReleaseAnalysisCardProps) {
   
   const renderRow = (label: string, value: string | number, isGood: boolean) => {
     const badgeBg = isGood ? 'bg-[#E8F8F5]' : 'bg-[#FAF4EB]';
@@ -34,7 +35,7 @@ export default function ReleaseAnalysisCard({ timing, point }: ReleaseAnalysisCa
       style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3, shadowOffset: { width: 0, height: 2 } }}
     >
       <AppText weight="bold" className="text-lg text-text-primary mb-5">
-        릴리즈 분석
+        {reportType === 'pro' ? '릴리즈 분석' : '일관성 분석'}
       </AppText>
       
       {/* 타이밍 섹션 */}
