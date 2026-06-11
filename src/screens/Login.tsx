@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/common/Button';
 import GoogleIcon from '../assets/GoogleIcon';
@@ -105,41 +105,68 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <View className="flex-1 px-6">
-        {/* 1. 상단 유동적 여백 (하단과 동일하게 비율 1.5로 수정) */}
-        <View style={{ flex: 1.5 }} />
+    // SafeAreaView edges를 bottom만 지정해 상단 노치 영역도 #3BC1A8로 채워지게 함
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#3BC1A8' }} edges={['bottom']}>
 
-        {/* 2. 중앙: 로고 및 문구 영역 */}
-        <View className="items-center" style={{ gap: 12 }}>
-          {/* 앱 로고 플레이스홀더 */}
-          <View className="w-24 h-24 bg-gray-100 rounded-3xl items-center justify-center">
-            <Text className="text-gray-400 font-bold text-center">로고 미정</Text>
-          </View>
+      {/* ── 상단 영역: 브랜드 색상 배경 + 로고 ── */}
+      {/* flex: 1로 하단 흰색 영역(flex: 0.8)과 비율을 나눔 → 약 55:45 비율 */}
+      <View
+        style={{ flex: 1, backgroundColor: '#3BC1A8', alignItems: 'center', justifyContent: 'center' }}
+      >
+        {/* assets/icon.png 로고 이미지 */}
+        <Image
+          source={require('../../assets/icon.png')}
+          style={{ width: 300, height: 150 }}
+          resizeMode="contain"
+        />
 
-          {/* 서브 카피 문구 */}
-          <Text className="text-gray-600 text-base font-medium text-center">
-            쉽고 간편한 나만의 투구폼 코칭 서비스
-          </Text>
-        </View>
+        {/* 서브 카피 문구 */}
+        <Text
+          style={{
+            marginTop: 12,
+            color: 'white',
+            fontSize: 18,
+            letterSpacing: 0.3,
+            textAlign: 'center',
+            alignSelf: 'stretch',
+          }}
+        >
+          내 손안의 작은 AI 투수 코치
+        </Text>
+      </View>
 
-        {/* 3. 로고와 버튼 사이 유동적 여백 (전체 비율 7을 맞추기 위해 비율 4로 수정) */}
-        <View style={{ flex: 4 }} />
+      {/* ── 하단 영역: 흰색 배경 + 소셜 로그인 ── */}
+      <View
+        style={{
+          flex: 0.3,
+          backgroundColor: 'white',
+          // 상단 모서리만 둥글게 처리해 카드처럼 올라오는 느낌
+          borderTopLeftRadius: 32,
+          borderTopRightRadius: 32,
+          paddingHorizontal: 24,
+          paddingTop: 40,
+          paddingBottom: 40,
+          gap: 8,
+        }}
+      >
+        {/* 섹션 타이틀 */}
+        <Text style={{ fontSize: 24, fontWeight: '700', color: '#111827', textAlign: 'center' }}>
+          시작하기
+        </Text>
 
-        {/* 4. 하단: 소셜 로그인 버튼 영역 */}
-        <View className="w-full">
-          <Button
-            size="long"
-            variant="outlined"
-            label="Google로 계속하기"
-            onPress={handleGoogleLogin}
-            // size={20}: 버튼 높이(h-14 = 56px)에서 텍스트와 시각적 균형을 맞춘 크기
-            icon={<GoogleIcon size={20} />}
-          />
-        </View>
+        {/* 설명 문구 */}
+        <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 24 }}>
+          소셜 계정으로 간편하게 로그인하세요
+        </Text>
 
-        {/* 5. 하단 유동적 여백 (마음에 드시는 기존 비율 1.5 유지) */}
-        <View style={{ flex: 1.5 }} />
+        {/* Google 로그인 버튼 */}
+        <Button
+          size="long"
+          variant="outlined"
+          label="Google로 계속하기"
+          onPress={handleGoogleLogin}
+          icon={<GoogleIcon size={20} />}
+        />
       </View>
     </SafeAreaView>
   );
