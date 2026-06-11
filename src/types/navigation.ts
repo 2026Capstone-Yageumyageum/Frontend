@@ -15,5 +15,6 @@ export type RootStackParamList = {
     email: string;
   };
   Home: undefined; // 로그인 완료 후 메인 화면 (추후 구현)
+  AnalysisLoading: { isBestPitch?: boolean; reportType?: 'pro' | 'me' } | undefined; // 분석 대기 화면
   Report: { isBestPitch?: boolean; reportType?: 'pro' | 'me' } | undefined; // AI 분석 결과 리포트 화면
 };

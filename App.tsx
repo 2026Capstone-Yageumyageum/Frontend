@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './src/screens/Login';
 import Signup from './src/screens/Signup';
+import AnalysisLoadingScreen from './src/features/report/screens/AnalysisLoadingScreen';
 import ReportScreen from './src/features/report/screens/ReportScreen';
 
 // ✅ 인증 완료 후 진입하는 하단 탭 네비게이터
@@ -73,6 +74,8 @@ export default function App() {
           <Stack.Screen name="Signup" component={Signup} />
           {/* 인증 완료 후 메인 앱 (하단 탭: 피드/카메라/마이) */}
           <Stack.Screen name="Home" component={TabNavigator} />
+          {/* 영상 등록 후 분석 대기 화면 */}
+          <Stack.Screen name="AnalysisLoading" component={AnalysisLoadingScreen} />
           {/* 영상 등록 후 렌더링되는 AI 분석 결과 화면 */}
           <Stack.Screen name="Report" component={ReportScreen} />
         </Stack.Navigator>
