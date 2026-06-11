@@ -52,24 +52,24 @@ export default function FeedScreen() {
     ? `나의 투구 기록 ${filteredProFeeds.length}`
     : `구종별 일관성 기록 ${filteredConsistencyFeeds.length}`;
 
-  // ── 리스트 헤더: 필터 + 섹션 제목 ──────────────────────────────────────────
+  // ── 리스트 헤더: 섹션 제목 + 필터 ──────────────────────────────────────────
   // FlatList의 ListHeaderComponent로 사용해 카드와 함께 스크롤됩니다.
   const ListHeader = (
     <View>
+      {/* 섹션 제목 (예: "나의 투구 기록 11") */}
+      <View className="px-2 pt-5 pb-2">
+        <Text className="text-text-primary text-xl font-semibold">
+          {sectionTitle}
+        </Text>
+      </View>
+
       {/* 구종 필터 칩 목록 (가로 스크롤이 화면 끝까지 닿도록 FlatList의 패딩 상쇄) */}
-      <View style={{ marginHorizontal: -20 }}>
+      <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
         <FilterChipList
           filters={currentFilters}
           selectedFilter={selectedFilter}
           onSelect={setSelectedFilter}
         />
-      </View>
-
-      {/* 섹션 제목 (예: "나의 투구 기록 11") */}
-      <View className="px-2 pt-2 pb-3">
-        <Text className="text-text-primary text-xl font-semibold">
-          {sectionTitle}
-        </Text>
       </View>
     </View>
   );
