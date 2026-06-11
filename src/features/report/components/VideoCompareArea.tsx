@@ -18,13 +18,13 @@ export default function VideoCompareArea({ score, isSingleVideo }: VideoCompareA
       {/* 영상 영역 */}
       <View className="flex-row justify-center mb-4">
         {isSingleVideo ? (
-          <View className="w-[60%] rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 3/4 }} />
+          <View className="w-[60%] rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 9/16 }} />
         ) : (
           <>
             {/* 내 영상 (왼쪽) */}
-            <View className="flex-1 mr-2 rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 3/4 }} />
+            <View className="flex-1 mr-2 rounded-2xl bg-[#1A2421]" style={{ aspectRatio: 9/16 }} />
             {/* 프로 선수 영상 (오른쪽) */}
-            <View className="flex-1 ml-2 rounded-2xl bg-[#191825]" style={{ aspectRatio: 3/4 }} />
+            <View className="flex-1 ml-2 rounded-2xl bg-[#191825]" style={{ aspectRatio: 9/16 }} />
           </>
         )}
       </View>
