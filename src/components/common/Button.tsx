@@ -75,10 +75,10 @@ const TEXT_STYLES: Record<ButtonVariant, { active: string; disabled: string }> =
   outlined: { active: 'text-blue-600 font-semibold', disabled: 'text-gray-300 font-semibold' },
 };
 
-// 로딩 스피너 색상 (primary는 흰색, 나머지는 파란색)
+// 로딩 스피너 색상 (primary는 흰색, 나머지는 브랜드 컬러)
 function getSpinnerColor(variant: ButtonVariant, disabled: boolean): string {
   if (disabled) return '#9CA3AF';
-  return variant === 'primary' ? '#FFFFFF' : '#2563EB';
+  return variant === 'primary' ? '#FFFFFF' : '#3BC1A8';
 }
 
 // ─────────────────────────────────────────────

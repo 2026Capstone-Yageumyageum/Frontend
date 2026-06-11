@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Image } from 'react-native';
 import AppText from '../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +19,7 @@ import { loginWithGoogle } from '../api/authApi';
 import { saveTokens } from '../utils/token';
 
 export default function Login() {
+  const [isLoading, setIsLoading] = useState(false);
   // navigate 함수에 RootStackParamList 타입을 지정해 타입 안전성 확보
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
@@ -30,6 +31,8 @@ export default function Login() {
   }, []);
 
   const handleGoogleLogin = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
     console.log('클라이언트 ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -102,6 +105,8 @@ export default function Login() {
         // 라이브러리와 무관한 일반 JS 에러 (네트워크 오류, 백엔드 API 실패 등)
         console.error('[Google 로그인] 예기치 않은 에러:', error);
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -176,6 +181,7 @@ export default function Login() {
           onPress={handleGoogleLogin}
           icon={<GoogleIcon size={20} />}
           accentColor="#000000"
+          loading={isLoading}
         />
       </View>
     </SafeAreaView>
