@@ -16,7 +16,8 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, Dimensions } from 'react-native';
+import { View, Dimensions } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { LineChart } from 'react-native-gifted-charts';
 import { GrowthTab, GrowthData, ProPlayerOption } from '../types/my.types';
 import ProPlayerDropdown from './ProPlayerDropdown';
@@ -46,17 +47,15 @@ function GrowthToggle({
         const label = tab === 'pro' ? '프로 비교' : '일관성';
         return (
           <View key={tab} onTouchEnd={() => onChange(tab)}>
-            <Text
-              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                isActive
-                  ? 'bg-brand text-white overflow-hidden'
-                  : 'text-text-secondary'
+            <AppText
+              weight={isActive ? 'semibold' : 'regular'}
+              className={`px-3 py-1 rounded-full text-xs ${
+                isActive ? 'text-white' : 'text-text-secondary'
               }`}
               style={
                 isActive
                   ? {
                       backgroundColor: '#3BC1A8',
-                      color: '#fff',
                       borderRadius: 999,
                       overflow: 'hidden',
                     }
@@ -64,7 +63,7 @@ function GrowthToggle({
               }
             >
               {label}
-            </Text>
+            </AppText>
           </View>
         );
       })}
@@ -95,7 +94,7 @@ export default function GrowthChartCard({ data }: GrowthChartCardProps) {
     >
       {/* ── 카드 헤더 ── */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-text-primary text-base font-bold">성장 추이</Text>
+        <AppText weight="bold" className="text-text-primary text-base">성장 추이</AppText>
         <GrowthToggle activeTab={activeTab} onChange={setActiveTab} />
       </View>
 

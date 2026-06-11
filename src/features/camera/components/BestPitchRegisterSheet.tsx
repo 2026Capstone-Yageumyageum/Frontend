@@ -22,7 +22,8 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Animated } from 'react-native';
+import { View, TouchableOpacity, Animated } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { Ionicons } from '@expo/vector-icons'
 import { PitchType } from '../types/camera.types';
 import { useDismissibleSheet } from '../hooks/useDismissibleSheet';
@@ -97,17 +98,17 @@ export default function BestPitchRegisterSheet({
         {/* ── 헤더: 트로피 아이콘 + 제목 ── */}
         <View className="flex-row items-center mb-1" style={{ gap: 6 }}>
           <Ionicons name="trophy-outline" size={20} color="#3BC1A8" />
-          <Text className="text-text-primary text-lg font-bold">
+          <AppText weight="bold" className="text-text-primary text-lg">
             최고의 1구 등록
-          </Text>
+          </AppText>
         </View>
 
         {/* ── 부제목 (구종명은 브랜드 컬러로 강조) ── */}
-        <Text className="text-text-secondary text-sm mb-5">
+        <AppText className="text-text-secondary text-sm mb-5">
           {'이 영상을 '}
-          <Text className="text-brand font-semibold">{pitchType}</Text>
+          <AppText weight="semibold" className="text-brand">{pitchType}</AppText>
           {' 최고의 1구로 등록할까요?'}
-        </Text>
+        </AppText>
 
         {/* ── 등록하기 토글 행 ── */}
         <TouchableOpacity
@@ -126,24 +127,24 @@ export default function BestPitchRegisterSheet({
         >
           {/* 텍스트 영역 */}
           <View>
-            <Text
+            <AppText
+              weight="semibold"
               style={{
                 fontSize: 15,
-                fontWeight: '600',
                 color: isRegistered ? 'white' : '#1A1C20',
                 marginBottom: 2,
               }}
             >
               등록하기
-            </Text>
-            <Text
+            </AppText>
+            <AppText
               style={{
                 fontSize: 12,
                 color: isRegistered ? 'rgba(255,255,255,0.75)' : '#8E949A',
               }}
             >
               {pitchType} 최고의 1구로 저장
-            </Text>
+            </AppText>
           </View>
 
           {/* 아이콘: 선택 전 → ">" / 선택 후 → 체크마크 */}
@@ -176,9 +177,9 @@ export default function BestPitchRegisterSheet({
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: 'white', fontSize: 16, fontWeight: '700' }}>
+          <AppText weight="bold" style={{ color: 'white', fontSize: 16 }}>
             완료
-          </Text>
+          </AppText>
         </TouchableOpacity>
       </Animated.View>
     </View>

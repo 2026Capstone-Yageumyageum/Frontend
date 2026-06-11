@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { PitchType } from '../types/feed.types';
 
 // ─── Props 타입 ─────────────────────────────────────────────────────────────
@@ -37,13 +38,9 @@ export default function PitchTypeBadge({
           : 'border border-brand bg-brand-light' // 테두리: 연한 배경 + 브랜드 테두리
       }`}
     >
-      <Text
-        className={`text-xs font-semibold ${
-          isSolid ? 'text-white' : 'text-brand'
-        }`}
-      >
+      <AppText weight="semibold" className={`text-xs ${isSolid ? 'text-white' : 'text-brand'}`}>
         {type}
-      </Text>
+      </AppText>
     </View>
   );
 }

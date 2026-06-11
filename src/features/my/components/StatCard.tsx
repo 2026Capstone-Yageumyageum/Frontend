@@ -11,7 +11,8 @@
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import AppText from '../../../components/common/AppText';
 
 interface StatCardProps {
   /** 카드 중앙에 표시할 수치 (예: '24', '91%', '8') */
@@ -39,10 +40,8 @@ export default function StatCard({ value, label, icon }: StatCardProps) {
       <View className="mb-2">{icon}</View>
 
       {/* 수치: 크고 굵게 */}
-      <Text className="text-text-primary text-2xl font-bold">{value}</Text>
-
-      {/* 레이블: 보조 텍스트 */}
-      <Text className="text-text-secondary text-xs mt-0.5">{label}</Text>
+      <AppText weight="bold" className="text-text-primary text-2xl">{value}</AppText>
+      <AppText className="text-text-secondary text-xs mt-0.5">{label}</AppText>
     </View>
   );
 }

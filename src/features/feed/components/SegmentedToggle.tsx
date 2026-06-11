@@ -8,7 +8,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 
 // ─── Props 타입 ─────────────────────────────────────────────────────────────
 interface SegmentedToggleProps {
@@ -38,23 +39,22 @@ export default function SegmentedToggle({
             activeOpacity={0.7}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            // 각 탭은 컨텐츠 너비만큼만 차지하고, 오른쪽 여백으로 간격 확보
-            className="mr-6"
+            // 각 탭은 컨텐츠 너비만큼만 차지하고, 오른쪽 여백으로 간격 확보 (간격 넓힘)
+            className="mr-8"
           >
-            {/* 탭 텍스트: 활성 탭은 강조 컬러 + 볼드 처리 */}
-            <Text
-              className={`text-base pb-2 ${
-                isActive
-                  ? 'text-text-primary font-bold'
-                  : 'text-text-secondary font-medium'
+            {/* 탭 텍스트: 활성 탭은 강조 컬러 + 볼드 처리, 크기 확대(text-lg) */}
+            <AppText
+              weight={isActive ? 'bold' : 'medium'}
+              className={`text-lg pb-3 ${
+                isActive ? 'text-text-primary' : 'text-text-secondary'
               }`}
             >
               {tab}
-            </Text>
+            </AppText>
 
-            {/* 활성 탭 하단 인디케이터 바 */}
+            {/* 활성 탭 하단 인디케이터 바 (두께 굵게 수정 h-1) */}
             <View
-              className={`h-0.5 rounded-full ${
+              className={`h-1 rounded-full ${
                 isActive ? 'bg-brand' : 'bg-transparent'
               }`}
             />

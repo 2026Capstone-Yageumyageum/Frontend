@@ -13,11 +13,6 @@
  * │    또는                       │
  * │ [ConsistencyCard] × N        │
  * └──────────────────────────────┘
- *
- * 설계 포인트:
- * - FlatList를 사용해 길어지는 카드 목록을 효율적으로 렌더링합니다.
- * - ListHeaderComponent로 필터/제목 영역을 고정하면
- *   카드 목록과 함께 스크롤되는 자연스러운 UX를 제공합니다.
  */
 
 import React from 'react';
@@ -56,16 +51,18 @@ export default function FeedScreen() {
   // FlatList의 ListHeaderComponent로 사용해 카드와 함께 스크롤됩니다.
   const ListHeader = (
     <View>
-      {/* 구종 필터 칩 목록 */}
-      <FilterChipList
-        filters={currentFilters}
-        selectedFilter={selectedFilter}
-        onSelect={setSelectedFilter}
-      />
+      {/* 구종 필터 칩 목록 (가로 스크롤이 화면 끝까지 닿도록 FlatList의 패딩 상쇄) */}
+      <View style={{ marginHorizontal: -20 }}>
+        <FilterChipList
+          filters={currentFilters}
+          selectedFilter={selectedFilter}
+          onSelect={setSelectedFilter}
+        />
+      </View>
 
       {/* 섹션 제목 (예: "나의 투구 기록 11") */}
-      <View className="px-5 pt-2 pb-3">
-        <Text className="text-text-primary text-lg font-bold">
+      <View className="px-2 pt-2 pb-3">
+        <Text className="text-text-primary text-xl font-semibold">
           {sectionTitle}
         </Text>
       </View>
@@ -104,8 +101,8 @@ export default function FeedScreen() {
   );
 
   return (
-    // SafeAreaView: 노치/홈 인디케이터 영역 자동 처리
-    <SafeAreaView className="flex-1 bg-surface-page">
+    // SafeAreaView: 노치/홈 인디케이터 영역 자동 처리 (bottom 제외하여 탭바 카메라 버튼과 자연스럽게 겹치게 함)
+    <SafeAreaView className="flex-1 bg-surface-page" edges={['top', 'left', 'right']}>
       {/* ── 상단 탭 토글 (스크롤에 고정) ── */}
       <View className="bg-surface border-b border-border">
         <SegmentedToggle

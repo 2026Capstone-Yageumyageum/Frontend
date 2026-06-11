@@ -9,7 +9,8 @@
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import AppText from '../../../components/common/AppText';
 
 interface RecordingTimerProps {
   /** "00:00:01" 형식의 포맷된 시간 문자열 */
@@ -22,9 +23,9 @@ export default function RecordingTimer({ formattedTime }: RecordingTimerProps) {
     <View className="flex-row items-center bg-black/50 px-4 py-1.5 rounded-full self-center">
       {/* 빨간 녹화 표시 점 */}
       <View className="w-2 h-2 rounded-full bg-red-500 mr-2" />
-      <Text className="text-white text-sm font-semibold tracking-wider">
+      <AppText weight="semibold" className="text-white text-sm tracking-wider">
         {formattedTime}
-      </Text>
+      </AppText>
     </View>
   );
 }

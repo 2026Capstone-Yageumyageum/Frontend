@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity } from 'react-native';
+import { Modal, View, TouchableOpacity } from 'react-native';
+import AppText from './AppText';
 
 // ─────────────────────────────────────────────
 //  타입 정의
@@ -51,11 +52,11 @@ export default function Dialog({
         {/* 다이얼로그 카드 */}
         <View className="bg-white rounded-3xl p-6 w-full">
           {/* ① 굵은 제목 */}
-          <Text className="text-lg font-bold text-gray-900 text-center mb-2">{title}</Text>
+          <AppText weight="bold" className="text-lg text-gray-900 text-center mb-2">{title}</AppText>
 
           {/* ② 세부 설명 (옵션) */}
           {description ? (
-            <Text className="text-sm text-gray-500 text-center leading-5 mb-6">{description}</Text>
+            <AppText className="text-sm text-gray-500 text-center leading-5 mb-6">{description}</AppText>
           ) : (
             // 설명 없을 때도 버튼 위 여백 확보
             <View className="mb-4" />
@@ -69,7 +70,7 @@ export default function Dialog({
               onPress={onCancel}
               activeOpacity={0.8}
             >
-              <Text className="text-sm font-semibold text-gray-400">{cancelLabel}</Text>
+              <AppText weight="semibold" className="text-sm text-gray-400">{cancelLabel}</AppText>
             </TouchableOpacity>
 
             {/* 확인 버튼: 강조 (filled) → 핵심 행동임을 명확히 전달 */}
@@ -81,7 +82,7 @@ export default function Dialog({
               onPress={onConfirm}
               activeOpacity={0.8}
             >
-              <Text className="text-sm font-semibold text-white">{confirmLabel}</Text>
+              <AppText weight="semibold" className="text-sm text-white">{confirmLabel}</AppText>
             </TouchableOpacity>
           </View>
         </View>

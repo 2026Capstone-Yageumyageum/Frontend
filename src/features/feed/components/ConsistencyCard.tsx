@@ -21,7 +21,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import VideoThumbnail from './VideoThumbnail';
 import PitchTypeBadge from './PitchTypeBadge';
 import { ConsistencyFeedItem } from '../types/feed.types';
@@ -55,7 +56,9 @@ export default function ConsistencyCard({
       {item.isBest && (
         // 썸네일 위에 겹쳐야 하므로 절대 위치 대신 썸네일 전에 배치하고 z-index 처리
         <View className="absolute top-3 left-3 z-10 flex-row items-center bg-brand/90 px-3 py-1 rounded-full">
-          <Text className="text-white text-xs font-bold">🏆 {item.pitchType} 베스트</Text>
+          <AppText weight="bold" className="text-white text-xs">
+            🏆 {item.pitchType} 베스트
+          </AppText>
         </View>
       )}
 
@@ -70,16 +73,16 @@ export default function ConsistencyCard({
 
       {/* 중단: 날짜 + 세션 정보 */}
       <View className="px-4 pt-3 pb-2">
-        <Text className="text-text-secondary text-xs mb-1">{item.date}</Text>
+        <AppText className="text-text-secondary text-xs mb-1">{item.date}</AppText>
         <View className="flex-row items-center gap-2">
-          <Text className="text-text-primary text-base font-bold mr-2">
+          <AppText weight="bold" className="text-text-primary text-base mr-2">
             {item.pitchType}
-          </Text>
-          {/* 세션 번호 뱃지 (outline 스타일) */}
+          </AppText>
+          {/* 세션 번호 배지 (outline 스타일) */}
           <View className="border border-gray-300 rounded-full px-2 py-0.5">
-            <Text className="text-text-secondary text-xs">
+            <AppText className="text-text-secondary text-xs">
               {item.title.replace(item.pitchType, '').trim()}
-            </Text>
+            </AppText>
           </View>
         </View>
       </View>
@@ -91,13 +94,13 @@ export default function ConsistencyCard({
       <View className="flex-row px-4 py-3">
         {/* 왼쪽: 최고 일관성 */}
         <View className="flex-1 mr-4">
-          <Text className="text-text-secondary text-xs mb-1">최고 일관성</Text>
+          <AppText className="text-text-secondary text-xs mb-1">최고 일관성</AppText>
           {/* 수치: 브랜드 컬러 강조 */}
           <View className="flex-row items-baseline mb-2">
-            <Text className="text-brand text-3xl font-bold">
+            <AppText weight="bold" className="text-brand text-3xl">
               {item.bestConsistency}
-            </Text>
-            <Text className="text-brand text-base font-bold ml-0.5">%</Text>
+            </AppText>
+            <AppText weight="bold" className="text-brand text-base ml-0.5">%</AppText>
           </View>
           {/* 진행률 바 */}
           <View className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -113,21 +116,21 @@ export default function ConsistencyCard({
 
         {/* 오른쪽: 세션 횟수 + 평균 */}
         <View className="flex-1 ml-4">
-          <Text className="text-text-secondary text-xs mb-1">
+          <AppText className="text-text-secondary text-xs mb-1">
             {item.pitchType} 세션
-          </Text>
+          </AppText>
           <View className="flex-row items-baseline mb-2">
-            <Text className="text-text-primary text-3xl font-bold">
+            <AppText weight="bold" className="text-text-primary text-3xl">
               {item.sessionCount}
-            </Text>
-            <Text className="text-text-secondary text-sm ml-1">회</Text>
+            </AppText>
+            <AppText className="text-text-secondary text-sm ml-1">회</AppText>
           </View>
           {/* 평균 점수 */}
           <View className="flex-row items-center">
-            <Text className="text-yellow-500 text-xs mr-1">★</Text>
-            <Text className="text-text-secondary text-xs">
+            <AppText className="text-yellow-500 text-xs mr-1">★</AppText>
+            <AppText className="text-text-secondary text-xs">
               평균 {item.avgConsistency}%
-            </Text>
+            </AppText>
           </View>
         </View>
       </View>

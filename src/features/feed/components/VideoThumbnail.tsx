@@ -13,7 +13,8 @@
  */
 
 import React from 'react';
-import { View, Text, Image, ImageSourcePropType } from 'react-native';
+import { View, Image, ImageSourcePropType } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { Ionicons } from '@expo/vector-icons';
 import PitchTypeBadge from './PitchTypeBadge';
 import { PitchType } from '../types/feed.types';
@@ -56,7 +57,7 @@ export default function VideoThumbnail({
         className="absolute top-3 right-3 flex-row items-center bg-black/50 px-2 py-1 rounded-full"
       >
         <Ionicons name="play" size={10} color="white" />
-        <Text className="text-white text-xs ml-1 font-medium">{duration}</Text>
+        <AppText weight="medium" className="text-white text-xs ml-1">{duration}</AppText>
       </View>
 
       {/* ── 좌하단 오버레이: 구종 뱃지 ── */}

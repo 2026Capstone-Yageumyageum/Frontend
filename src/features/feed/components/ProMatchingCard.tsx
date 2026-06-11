@@ -16,7 +16,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import VideoThumbnail from './VideoThumbnail';
 import { ProFeedItem } from '../types/feed.types';
 
@@ -59,25 +60,25 @@ export default function ProMatchingCard({
       <View className="px-4 py-3">
         {/* 날짜 + 유사도를 양 끝 배치 */}
         <View className="flex-row justify-between items-center mb-1">
-          <Text className="text-text-secondary text-xs">{item.date}</Text>
+          <AppText className="text-text-secondary text-xs">{item.date}</AppText>
           {/* 유사도: 큰 숫자 + 브랜드 컬러로 강조 */}
           <View className="flex-row items-baseline">
-            <Text className="text-brand text-2xl font-bold">
+            <AppText weight="bold" className="text-brand text-2xl">
               {item.similarity}
-            </Text>
-            <Text className="text-brand text-sm font-bold ml-0.5">%</Text>
+            </AppText>
+            <AppText weight="bold" className="text-brand text-sm ml-0.5">%</AppText>
           </View>
         </View>
 
         {/* 선수 이름 */}
-        <Text className="text-text-primary text-base font-bold">
+        <AppText weight="bold" className="text-text-primary text-base">
           {item.playerName}
-        </Text>
+        </AppText>
 
         {/* 하단 우측 '유사도' 레이블 */}
-        <Text className="text-text-secondary text-xs text-right -mt-5">
+        <AppText className="text-text-secondary text-xs text-right -mt-5">
           유사도
-        </Text>
+        </AppText>
       </View>
     </TouchableOpacity>
   );

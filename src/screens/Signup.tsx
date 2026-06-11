@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Alert } from 'react-native';
+import { View, TextInput, Alert } from 'react-native';
+import AppText from '../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -59,8 +60,10 @@ export default function Signup() {
       <View className="flex-1 px-6 justify-center" style={{ gap: 24 }}>
         {/* 제목 영역 */}
         <View style={{ gap: 8 }}>
-          <Text className="text-2xl font-bold text-gray-900">닉네임을 설정해주세요</Text>
-          <Text className="text-sm text-gray-500">가입 계정: {email}</Text>
+          <AppText weight="bold" className="text-2xl text-gray-900">
+            닉네임을 설정해주세요
+          </AppText>
+          <AppText className="text-sm text-gray-500">가입 계정: {email}</AppText>
         </View>
 
         {/* 닉네임 입력 필드 */}

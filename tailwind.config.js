@@ -40,6 +40,20 @@ module.exports = {
         card: '24px',
         chip: '999px', // 완전 원형 (pill)
       },
+
+      // ─── Pretendard 커스텀 폰트 ─────────────────────────────────────────
+      // 사용법 예시:
+      //   className="font-pretendard"        → Pretendard-Regular
+      //   className="font-pretendard-medium"  → Pretendard-Medium
+      //   className="font-pretendard-semibold" → Pretendard-SemiBold
+      //   className="font-pretendard-bold"    → Pretendard-Bold
+      // App.tsx의 useFonts에서 등록한 키 이름과 반드시 일치해야 합니다.
+      fontFamily: {
+        'pretendard': ['Pretendard-Regular'],
+        'pretendard-medium': ['Pretendard-Medium'],
+        'pretendard-semibold': ['Pretendard-SemiBold'],
+        'pretendard-bold': ['Pretendard-Bold'],
+      },
     },
   },
   plugins: [],

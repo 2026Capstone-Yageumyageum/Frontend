@@ -17,7 +17,8 @@
  */
 
 import React from 'react';
-import { View, Text, Dimensions } from 'react-native';
+import { View, Dimensions } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { PieChart } from 'react-native-gifted-charts';
 import { PitchDistributionItem } from '../types/my.types';
 
@@ -51,10 +52,10 @@ export default function PitchDistributionCard({
     >
       {/* 카드 헤더 */}
       <View className="flex-row justify-between items-center mb-4">
-        <Text className="text-text-primary text-base font-bold">구종 분포</Text>
-        <Text className="text-text-secondary text-xs">
+        <AppText weight="bold" className="text-text-primary text-base">구종 분포</AppText>
+        <AppText className="text-text-secondary text-xs">
           총 {totalSessions}세션
-        </Text>
+        </AppText>
       </View>
 
       {/* 차트 + 범례 가로 배치 */}
@@ -85,13 +86,13 @@ export default function PitchDistributionCard({
                     backgroundColor: item.color,
                   }}
                 />
-                <Text className="text-text-primary text-sm">{item.type}</Text>
+                <AppText className="text-text-primary text-sm">{item.type}</AppText>
               </View>
 
               {/* 퍼센트 수치: 브랜드 컬러로 강조 */}
-              <Text className="text-brand text-sm font-bold">
+              <AppText weight="bold" className="text-brand text-sm">
                 {item.percentage}%
-              </Text>
+              </AppText>
             </View>
           ))}
         </View>

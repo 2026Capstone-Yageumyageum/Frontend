@@ -14,7 +14,8 @@
  */
 
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal } from 'react-native';
+import { View, TouchableOpacity, Modal } from 'react-native';
+import AppText from '../../../components/common/AppText';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SaveVideoModalProps {
@@ -49,14 +50,14 @@ export default function SaveVideoModal({
           </View>
 
           {/* 제목 */}
-          <Text className="text-text-primary text-xl font-bold">
+          <AppText weight="bold" className="text-text-primary text-xl">
             영상 저장
-          </Text>
+          </AppText>
 
           {/* 설명 문구 */}
-          <Text className="text-text-secondary text-sm text-center leading-5">
+          <AppText className="text-text-secondary text-sm text-center leading-5">
             촬영한 영상을{'\n'}갤러리에 저장하시겠어요?
-          </Text>
+          </AppText>
 
           {/* 버튼 영역 */}
           <View className="flex-row w-full mt-2" style={{ gap: 10 }}>
@@ -66,9 +67,9 @@ export default function SaveVideoModal({
               activeOpacity={0.8}
               className="flex-1 bg-gray-100 rounded-2xl py-4 items-center"
             >
-              <Text className="text-text-primary text-sm font-semibold">
+              <AppText weight="semibold" className="text-text-primary text-sm">
                 취소
-              </Text>
+              </AppText>
             </TouchableOpacity>
 
             {/* 저장 버튼 (브랜드 컬러) */}
@@ -79,7 +80,7 @@ export default function SaveVideoModal({
               style={{ gap: 6 }}
             >
               <Ionicons name="download-outline" size={16} color="white" />
-              <Text className="text-white text-sm font-semibold">저장</Text>
+              <AppText weight="semibold" className="text-white text-sm">저장</AppText>
             </TouchableOpacity>
           </View>
         </View>
