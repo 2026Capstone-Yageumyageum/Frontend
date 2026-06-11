@@ -56,12 +56,14 @@ export default function FeedScreen() {
   // FlatList의 ListHeaderComponent로 사용해 카드와 함께 스크롤됩니다.
   const ListHeader = (
     <View>
-      {/* 구종 필터 칩 목록 */}
-      <FilterChipList
-        filters={currentFilters}
-        selectedFilter={selectedFilter}
-        onSelect={setSelectedFilter}
-      />
+      {/* 구종 필터 칩 목록 (가로 스크롤이 화면 끝까지 닿도록 FlatList의 패딩 상쇄) */}
+      <View style={{ marginHorizontal: -20 }}>
+        <FilterChipList
+          filters={currentFilters}
+          selectedFilter={selectedFilter}
+          onSelect={setSelectedFilter}
+        />
+      </View>
 
       {/* 섹션 제목 (예: "나의 투구 기록 11") */}
       <View className="px-5 pt-2 pb-3">
