@@ -96,8 +96,8 @@ export default function FeedScreen() {
     <ConsistencyCard
       item={item}
       onPress={(selected) => {
-        // TODO: 상세 화면 네비게이션 연결
-        console.log('선택된 일관성 기록:', selected.id);
+        // @ts-ignore - Report 화면은 RootStack에 정의됨
+        navigation.navigate('Report', { reportType: 'me' });
       }}
     />
   );

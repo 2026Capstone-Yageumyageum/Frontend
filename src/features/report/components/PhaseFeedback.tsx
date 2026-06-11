@@ -5,9 +5,10 @@ import { PhaseFeedback as PhaseFeedbackType } from '../types/report.types';
 
 interface PhaseFeedbackProps {
   data: PhaseFeedbackType;
+  reportType?: 'pro' | 'me';
 }
 
-export default function PhaseFeedback({ data }: PhaseFeedbackProps) {
+export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbackProps) {
   const isGood = data.status === '양호';
   const badgeBg = isGood ? 'bg-[#E8F8F5]' : 'bg-[#FAF4EB]';
   const badgeTextColor = isGood ? '#3BC1A8' : '#D3735D';
@@ -18,12 +19,13 @@ export default function PhaseFeedback({ data }: PhaseFeedbackProps) {
       className="bg-white rounded-3xl mx-5 mt-5 px-5 py-5 mb-10" 
       style={{ shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, elevation: 3, shadowOffset: { width: 0, height: 2 } }}
     >
-      {/* 헤더 */}
-      <View className="flex-row items-center justify-between mb-5">
+      {/* 헤더: 상태 원 + 구간 이름 + 점수 뱃지 */}
+      <View className="flex-row items-center justify-between mb-4">
         <View className="flex-row items-center">
           <View className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: dotColor }} />
           <AppText weight="bold" className="text-text-primary text-sm">
-            {data.phaseName} · 현재 구간
+            {data.phaseName}
+            {reportType === 'me' ? ' · 현재 구간' : ''}
           </AppText>
         </View>
         <View className={`px-2.5 py-1 rounded-full ${badgeBg}`}>
