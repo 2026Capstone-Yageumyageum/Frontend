@@ -13,6 +13,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import FeedScreen from '../features/feed/screens/FeedScreen';
 import MyScreen from '../features/my/screens/MyScreen';
@@ -35,6 +36,8 @@ const BRAND_COLOR = '#3BC1A8';
 const INACTIVE_COLOR = '#8E949A';
 
 export default function TabNavigator() {
+  // 시스템 네비게이션 바(제스처/3버튼) 높이만큼 탭바를 위로 올려 가려지지 않게 한다.
+  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
       // 초기 진입 탭: 피드
@@ -45,8 +48,8 @@ export default function TabNavigator() {
           backgroundColor: '#FFFFFF',
           borderTopColor: '#E8EAEC',
           borderTopWidth: 1,
-          paddingBottom: 8,
-          height: 64,
+          paddingBottom: 8 + insets.bottom,
+          height: 64 + insets.bottom,
         },
         tabBarActiveTintColor: BRAND_COLOR,
         tabBarInactiveTintColor: INACTIVE_COLOR,

@@ -8,6 +8,8 @@
  * - 타입은 src/types/ 에서 중앙 관리하는 것이 React Native 프로젝트 관례입니다.
  */
 
+import { AnalysisResultResponse } from '../api/analysisApi';
+
 export type RootStackParamList = {
   Login: undefined; // 파라미터 없음
   Signup: {
@@ -15,6 +17,19 @@ export type RootStackParamList = {
     email: string;
   };
   Home: undefined; // 로그인 완료 후 메인 화면 (추후 구현)
-  AnalysisLoading: { isBestPitch?: boolean; reportType?: 'pro' | 'me' } | undefined; // 분석 대기 화면
-  Report: { isBestPitch?: boolean; reportType?: 'pro' | 'me' } | undefined; // AI 분석 결과 리포트 화면
+  // 분석 대기 화면: 로컬 영상 uri를 받아 업로드 → 폴링까지 이 화면에서 처리한다
+  AnalysisLoading:
+    | { videoUri?: string; pitchType?: string; isBestPitch?: boolean; reportType?: 'pro' | 'me' }
+    | undefined;
+  // AI 분석 결과 리포트 화면: 폴링 완료된 결과를 그대로 받는다
+  Report:
+    | {
+        videoId?: number;
+        result?: AnalysisResultResponse;
+        // 분석 직후 진입 시 내 로컬 영상 uri (스켈레톤 오버레이용). 피드 진입 시엔 없음.
+        videoUri?: string;
+        isBestPitch?: boolean;
+        reportType?: 'pro' | 'me';
+      }
+    | undefined;
 };

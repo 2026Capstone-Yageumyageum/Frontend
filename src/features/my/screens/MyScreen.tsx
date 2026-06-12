@@ -1,42 +1,25 @@
 /**
  * [MyScreen.tsx]
- * 마이 탭 메인 화면 (대시보드)
- *
- * 구조:
- * ┌──────────────────────────────────┐
- * │ [ProfileHeader]                  │ ← 스크롤과 함께 올라감
- * ├──────────────────────────────────┤
- * │ [StatCard × 3] (가로 3열)        │
- * ├──────────────────────────────────┤
- * │ [PitchDistributionCard]          │
- * ├──────────────────────────────────┤
- * │ [GrowthChartCard]                │
- * └──────────────────────────────────┘
- *
- * 설계 포인트:
- * - ScrollView로 전체를 스크롤 가능하게 합니다.
- * - SafeAreaView는 react-native-safe-area-context에서 가져와
- *   Android 상태바 영역도 정확히 처리합니다.
+ * 마이 탭 메인 화면 (대시보드) — 실데이터 연동.
+ * 화면 포커스 시 GET /api/users/me/stats 로 내 통계를 받아 렌더한다.
  */
 
-import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import ProfileHeader from '../components/ProfileHeader';
 import StatCard from '../components/StatCard';
 import PitchDistributionCard from '../components/PitchDistributionCard';
 import GrowthChartCard from '../components/GrowthChartCard';
+import AppText from '../../../components/common/AppText';
+import { GrowthData, PitchDistributionItem } from '../types/my.types';
+import { getMyStats, UserStats } from '../../../api/userApi';
+import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 
-import {
-  MOCK_USER_PROFILE,
-  MOCK_PITCH_DISTRIBUTION,
-  MOCK_GROWTH_DATA,
-} from '../data/my.mockdata';
-
-// ─── 통계 카드 아이콘 (Ionicons 기반 이모지 대체) ────────────────────────────
-// 디자인 이미지의 컬러 아이콘을 최대한 유사하게 구현합니다.
+// ─── 통계 카드 아이콘 ────────────────────────────────────────
 function SessionIcon() {
   return (
     <View className="w-9 h-9 rounded-full bg-brand-light items-center justify-center">
@@ -59,52 +42,104 @@ function MonthIcon() {
   );
 }
 
-import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
+// 구종 분포 도넛 색상 팔레트 (인덱스 순서로 배정)
+const PITCH_COLORS = ['#3BC1A8', '#6ED8C8', '#A8EAE0', '#D4F5EF', '#BFE9E0'];
 
 export default function MyScreen() {
   useDoubleBackExit();
-  
-  const profile = MOCK_USER_PROFILE;
+
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 탭에 들어올 때마다 최신 통계 갱신 (분석 직후 복귀 시 반영)
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoading(true);
+      setError(null);
+      getMyStats()
+        .then((data) => {
+          if (active) setStats(data);
+        })
+        .catch((e) => {
+          if (active) setError(e instanceof Error ? e.message : '통계를 불러오지 못했습니다.');
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  // ── 로딩 ──
+  if (loading && !stats) {
+    return (
+      <SafeAreaView className="flex-1 bg-surface-page items-center justify-center" edges={['top']}>
+        <ActivityIndicator size="large" color="#3BC1A8" />
+      </SafeAreaView>
+    );
+  }
+
+  // ── 에러 ──
+  if (error && !stats) {
+    return (
+      <SafeAreaView className="flex-1 bg-surface-page items-center justify-center px-8" edges={['top']}>
+        <AppText className="text-text-secondary text-sm text-center">{error}</AppText>
+      </SafeAreaView>
+    );
+  }
+
+  const s = stats!;
+  const hasData = s.totalSessions > 0;
+
+  const pitchData: PitchDistributionItem[] = s.pitchDistribution.map((item, index) => ({
+    type: item.type as PitchDistributionItem['type'],
+    percentage: item.percentage,
+    color: PITCH_COLORS[index % PITCH_COLORS.length],
+  }));
+
+  const growthData: GrowthData = {
+    pro: {
+      selectedPlayer: { id: 'me', name: '프로 비교', initial: 'P' },
+      chartData: s.growth,
+    },
+    consistency: { chartData: s.growth },
+  };
 
   return (
-    // edges: 상단만 Safe Area 적용 (하단은 TabNavigator가 처리)
     <SafeAreaView className="flex-1 bg-surface-page" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* ── 프로필 헤더 ── */}
-        <ProfileHeader
-          nickname={profile.nickname}
-          recentAnalysisCount={profile.recentAnalysisCount}
-        />
+        <ProfileHeader nickname={s.nickname} recentAnalysisCount={s.recentAnalysisCount} />
 
-        {/* ── 통계 카드 3개 (가로 균등 배치) ── */}
+        {/* 통계 카드 3개 */}
         <View className="flex-row mx-5 mb-4" style={{ gap: 10 }}>
-          <StatCard
-            value={String(profile.totalSessions)}
-            label="총 세션"
-            icon={<SessionIcon />}
-          />
-          <StatCard
-            value={`${profile.bestScore}%`}
-            label="최고 점수"
-            icon={<ScoreIcon />}
-          />
-          <StatCard
-            value={String(profile.thisMonthSessions)}
-            label="이번 달"
-            icon={<MonthIcon />}
-          />
+          <StatCard value={String(s.totalSessions)} label="총 세션" icon={<SessionIcon />} />
+          <StatCard value={`${s.bestScore}%`} label="최고 점수" icon={<ScoreIcon />} />
+          <StatCard value={String(s.thisMonthSessions)} label="이번 달" icon={<MonthIcon />} />
         </View>
 
-        {/* ── 구종 분포 카드 ── */}
-        <PitchDistributionCard
-          data={MOCK_PITCH_DISTRIBUTION}
-          totalSessions={profile.totalSessions * 4} // 총 세션 x 평균 구종 수 (예시)
-        />
+        {hasData ? (
+          <>
+            {pitchData.length > 0 && (
+              <PitchDistributionCard data={pitchData} totalSessions={s.totalSessions} />
+            )}
+            <GrowthChartCard data={growthData} />
+          </>
+        ) : (
+          <View className="items-center justify-center py-16 px-8">
+            <Ionicons name="baseball-outline" size={40} color="#C4C9CF" />
+            <AppText weight="bold" className="text-text-primary text-base mt-4 mb-1">
+              아직 분석 기록이 없어요
+            </AppText>
+            <AppText className="text-text-secondary text-sm text-center">
+              카메라 탭에서 투구를 촬영하고 분석해보세요.
+            </AppText>
+          </View>
+        )}
 
-        {/* ── 성장 추이 카드 ── */}
-        <GrowthChartCard data={MOCK_GROWTH_DATA} />
-
-        {/* 하단 여백 (TabBar 위 공간) */}
         <View className="h-4" />
       </ScrollView>
     </SafeAreaView>

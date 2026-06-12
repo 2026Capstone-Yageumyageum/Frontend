@@ -1,69 +1,81 @@
 /**
  * [FeedScreen.tsx]
- * 피드 탭 메인 화면
- *
- * 구조:
- * ┌──────────────────────────────┐
- * │ [SegmentedToggle: 프로/일관성] │ ← 고정
- * ├──────────────────────────────┤
- * │ [FilterChipList: 구종 필터]   │ ← 고정
- * ├──────────────────────────────┤
- * │ "나의 투구 기록 N" / "구종별 일관성 기록 N"  │
- * │ [ProMatchingCard] × N        │ ← 스크롤
- * │    또는                       │
- * │ [ConsistencyCard] × N        │
- * └──────────────────────────────┘
+ * 피드 탭 — 프로 비교 탭은 내 분석 목록(실데이터), 일관성 탭은 준비중 안내.
  */
 
-import React from 'react';
-import { View, Text, FlatList, ListRenderItem } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, FlatList, ListRenderItem, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 import SegmentedToggle from '../components/SegmentedToggle';
 import FilterChipList from '../components/FilterChipList';
 import ProMatchingCard from '../components/ProMatchingCard';
-import ConsistencyCard from '../components/ConsistencyCard';
 import { useFeedFilter } from '../hooks/useFeedFilter';
-import { ProFeedItem, ConsistencyFeedItem } from '../types/feed.types';
+import { ProFeedItem, PitchType } from '../types/feed.types';
+import { getMyAnalyses } from '../../../api/userApi';
 
-// ─── 탭 레이블 상수 ──────────────────────────────────────────────────────────
 const TAB_LABELS = { pro: '프로 선수', consistency: '일관성' };
 const TABS = [TAB_LABELS.pro, TAB_LABELS.consistency];
 
 export default function FeedScreen() {
   useDoubleBackExit();
 
-  const {
-    activeTab,
-    setActiveTab,
-    selectedFilter,
-    setSelectedFilter,
-    currentFilters,
-    filteredProFeeds,
-    filteredConsistencyFeeds,
-  } = useFeedFilter();
+  // 탭/필터 상태는 기존 훅을 재사용하되, 데이터는 실서버에서 받아 직접 필터링한다.
+  const { activeTab, setActiveTab, selectedFilter, setSelectedFilter, currentFilters } =
+    useFeedFilter();
   const navigation = useNavigation();
 
-  // 현재 탭에 맞는 피드 데이터와 제목 텍스트
-  const isProTab = activeTab === 'pro';
-  const feedData = isProTab ? filteredProFeeds : filteredConsistencyFeeds;
-  const sectionTitle = isProTab
-    ? `나의 투구 기록 ${filteredProFeeds.length}`
-    : `구종별 일관성 기록 ${filteredConsistencyFeeds.length}`;
+  const [proItems, setProItems] = useState<ProFeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // ── 리스트 헤더: 섹션 제목 + 필터 ──────────────────────────────────────────
-  // FlatList의 ListHeaderComponent로 사용해 카드와 함께 스크롤됩니다.
+  // 화면 포커스 시 내 분석 목록 갱신
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoading(true);
+      setError(null);
+      getMyAnalyses()
+        .then((items) => {
+          if (!active) return;
+          setProItems(
+            items.map((it) => ({
+              id: String(it.videoId),
+              date: it.date,
+              playerName: it.playerName,
+              pitchType: it.pitchType as PitchType,
+              similarity: it.similarity,
+              duration: '',
+              thumbnailUri: undefined,
+            })),
+          );
+        })
+        .catch((e) => {
+          if (active) setError(e instanceof Error ? e.message : '목록을 불러오지 못했습니다.');
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }, []),
+  );
+
+  const isProTab = activeTab === 'pro';
+  const filteredPro =
+    selectedFilter === '전체'
+      ? proItems
+      : proItems.filter((item) => item.pitchType === selectedFilter);
+
   const ListHeader = (
     <View>
-      {/* 섹션 제목 (예: "나의 투구 기록 11") */}
       <View className="px-2 pt-5 pb-2">
         <Text className="text-text-primary text-xl font-semibold">
-          {sectionTitle}
+          나의 투구 기록 {filteredPro.length}
         </Text>
       </View>
-
-      {/* 구종 필터 칩 목록 (가로 스크롤이 화면 끝까지 닿도록 FlatList의 패딩 상쇄) */}
       <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
         <FilterChipList
           filters={currentFilters}
@@ -74,67 +86,50 @@ export default function FeedScreen() {
     </View>
   );
 
-  // ── 빈 상태 컴포넌트 ─────────────────────────────────────────────────────
   const EmptyState = (
-    <View className="flex-1 items-center justify-center py-16">
-      <Text className="text-text-secondary text-sm">
-        해당 구종의 기록이 없습니다.
+    <View className="flex-1 items-center justify-center py-16 px-8">
+      <Text className="text-text-secondary text-sm text-center">
+        {error ?? '아직 분석 기록이 없어요.\n카메라 탭에서 투구를 촬영해보세요.'}
       </Text>
     </View>
   );
 
-  // ── 프로 선수 탭 렌더러 ───────────────────────────────────────────────────
   const renderProItem: ListRenderItem<ProFeedItem> = ({ item }) => (
     <ProMatchingCard
       item={item}
-      onPress={(selected) => {
-        // @ts-ignore - Report 화면은 RootStack에 정의됨
-        navigation.navigate('Report');
-      }}
-    />
-  );
-
-  // ── 일관성 탭 렌더러 ──────────────────────────────────────────────────────
-  const renderConsistencyItem: ListRenderItem<ConsistencyFeedItem> = ({ item }) => (
-    <ConsistencyCard
-      item={item}
-      onPress={(selected) => {
-        // @ts-ignore - Report 화면은 RootStack에 정의됨
-        navigation.navigate('Report', { reportType: 'me' });
+      onPress={() => {
+        // @ts-ignore - Report 화면은 RootStack에 정의됨. videoId만 넘기면 ReportScreen이 결과를 조회한다.
+        navigation.navigate('Report', { videoId: Number(item.id) });
       }}
     />
   );
 
   return (
-    // SafeAreaView: 노치/홈 인디케이터 영역 자동 처리 (bottom 제외하여 탭바 카메라 버튼과 자연스럽게 겹치게 함)
     <SafeAreaView className="flex-1 bg-surface-page" edges={['top', 'left', 'right']}>
-      {/* ── 상단 탭 토글 (스크롤에 고정) ── */}
       <View className="bg-surface border-b border-border">
         <SegmentedToggle
           tabs={TABS}
           activeTab={isProTab ? TAB_LABELS.pro : TAB_LABELS.consistency}
-          onChange={(tab) =>
-            setActiveTab(tab === TAB_LABELS.pro ? 'pro' : 'consistency')
-          }
+          onChange={(tab) => setActiveTab(tab === TAB_LABELS.pro ? 'pro' : 'consistency')}
         />
       </View>
 
-      {/* ── 카드 목록 ── */}
-      {isProTab ? (
-        <FlatList
-          data={filteredProFeeds}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProItem}
-          ListHeaderComponent={ListHeader}
-          ListEmptyComponent={EmptyState}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
-          showsVerticalScrollIndicator={false}
-        />
+      {!isProTab ? (
+        // 일관성(내 투구끼리 비교) 기능은 아직 미지원
+        <View className="flex-1 items-center justify-center px-8">
+          <Text className="text-text-secondary text-sm text-center">
+            구종별 일관성 분석은 준비 중이에요.
+          </Text>
+        </View>
+      ) : loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#3BC1A8" />
+        </View>
       ) : (
         <FlatList
-          data={filteredConsistencyFeeds}
+          data={filteredPro}
           keyExtractor={(item) => item.id}
-          renderItem={renderConsistencyItem}
+          renderItem={renderProItem}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={EmptyState}
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
