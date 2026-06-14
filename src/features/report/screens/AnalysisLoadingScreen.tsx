@@ -30,8 +30,13 @@ export default function AnalysisLoadingScreen() {
           throw new Error('분석할 영상이 없습니다.');
         }
 
-        // 1) 업로드 → videoId 확보 (202 즉시 반환). 사용자가 고른 구종도 함께 전달.
-        const { videoId } = await requestAnalysis(videoUri, route.params?.pitchType);
+        // 1) 업로드 → videoId 확보 (202 즉시 반환). 구종 + 트림 구간도 함께 전달.
+        const { videoId } = await requestAnalysis(
+          videoUri,
+          route.params?.pitchType,
+          route.params?.trimStartSec,
+          route.params?.trimEndSec,
+        );
 
         // 2) 결과 폴링 (status COMPLETED 까지)
         setStatusText('AI가 투구 자세를 분석하고 있어요');

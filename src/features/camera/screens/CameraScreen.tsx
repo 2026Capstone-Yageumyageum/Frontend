@@ -435,11 +435,16 @@ export default function CameraScreen() {
     }
   }, []);
 
-  // PREVIEW 계열 진입 시 trimStart에서 재생 시작 (편집 완료 후 바로 반영)
-  // onPlaybackStatusUpdate의 범위 이탈 감지도 있지만,
-  // Video 마운트 직후 즉시 올바른 위치에서 시작하도록 useEffect로 이중 보장
+  // PREVIEW 계열은 PREVIEW / PREVIEW_EDIT_TIP / PREVIEW_SAVE_MODAL이 같은 프리뷰 영상을 공유한다.
+  // 이 그룹 "밖에서" 처음 진입할 때만 trimStart로 시킹한다.
+  // (그룹 내부 전환 — 예: 편집 팁 → 프리뷰 — 에서 매번 되감겨 영상이 처음으로 튀던 버그 수정)
+  const prevFlowRef = useRef<CameraFlowState>(flowState);
   useEffect(() => {
-    if (flowState === 'PREVIEW' || flowState === 'PREVIEW_EDIT_TIP') {
+    const prev = prevFlowRef.current;
+    prevFlowRef.current = flowState;
+    const inPreviewGroup = (s: CameraFlowState) =>
+      s === 'PREVIEW' || s === 'PREVIEW_EDIT_TIP' || s === 'PREVIEW_SAVE_MODAL';
+    if (inPreviewGroup(flowState) && !inPreviewGroup(prev)) {
       const timer = setTimeout(() => {
         previewVideoRef.current?.setPositionAsync(trimRangeRef.current.startSec * 1000);
       }, 50);
@@ -462,11 +467,16 @@ export default function CameraScreen() {
    *  handleRetake()가 recordedVideo를 비우므로 uri를 먼저 캡처한다. */
   const handleSuccess = useCallback(() => {
     const uri = recordedVideo?.uri;
+    // handleRetake()가 trimRange를 초기화하므로 먼저 캡처한다.
+    const { startSec, endSec } = trimRangeRef.current;
     handleRetake();
     // @ts-ignore - AnalysisLoading 스크린이 Root 스택에 정의되어 있음
     navigation.navigate('AnalysisLoading', {
       videoUri: uri,
       pitchType: selectedPitch ?? '직구',
+      // 사용자가 트리머로 자른 구간만 분석하도록 전달
+      trimStartSec: startSec,
+      trimEndSec: endSec,
       isBestPitch: cameraMode === 'my',
       reportType: cameraMode === 'my' ? 'me' : 'pro',
     });

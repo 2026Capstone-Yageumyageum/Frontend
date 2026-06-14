@@ -74,7 +74,8 @@ function num(value: string | undefined): number {
 export function parseSkeletonCsv(csv: string | null | undefined): SkeletonFrame[] {
   if (!csv || !csv.trim()) return [];
 
-  const lines = csv.trim().split(/\r?\n/);
+  // 줄 구분자가 \n, \r\n, \r 어느 것이든 처리
+  const lines = csv.trim().split(/\r\n|\r|\n/);
   if (lines.length < 2) return [];
 
   const header = lines[0].split(',');
@@ -110,6 +111,52 @@ export function parseSkeletonCsv(csv: string | null | undefined): SkeletonFrame[
     });
   }
   return frames;
+}
+
+/**
+ * 주어진 원본 프레임 인덱스에 해당하는 재생 시간(초)을 구합니다.
+ * 스켈레톤은 균등 샘플링돼 있으므로 인접 샘플 사이를 선형 보간합니다.
+ * (phase 구간 startFrame/endFrame → 타임라인 위치 매핑용)
+ */
+export function timeAtFrameIndex(frames: SkeletonFrame[], frameIndex: number): number | null {
+  if (frames.length === 0) return null;
+  if (frameIndex <= frames[0].frameIndex) return frames[0].timeSec;
+  const last = frames[frames.length - 1];
+  if (frameIndex >= last.frameIndex) return last.timeSec;
+  let lo = 0;
+  let hi = frames.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (frames[mid].frameIndex <= frameIndex) lo = mid;
+    else hi = mid;
+  }
+  const a = frames[lo];
+  const b = frames[hi];
+  const span = b.frameIndex - a.frameIndex;
+  if (span <= 0) return a.timeSec;
+  const t = (frameIndex - a.frameIndex) / span;
+  return a.timeSec + t * (b.timeSec - a.timeSec);
+}
+
+/** 주어진 원본 프레임 인덱스에 가장 가까운 스켈레톤 프레임을 반환합니다(프로 리샘플링용). */
+export function frameNearestFrameIndex(
+  frames: SkeletonFrame[],
+  frameIndex: number,
+): SkeletonFrame | null {
+  if (frames.length === 0) return null;
+  if (frameIndex <= frames[0].frameIndex) return frames[0];
+  const last = frames[frames.length - 1];
+  if (frameIndex >= last.frameIndex) return last;
+  let lo = 0;
+  let hi = frames.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (frames[mid].frameIndex <= frameIndex) lo = mid;
+    else hi = mid;
+  }
+  return Math.abs(frames[lo].frameIndex - frameIndex) <= Math.abs(frames[hi].frameIndex - frameIndex)
+    ? frames[lo]
+    : frames[hi];
 }
 
 /** 재생 위치(초)에 가장 가까운 프레임 인덱스를 찾습니다(시간 기준). */

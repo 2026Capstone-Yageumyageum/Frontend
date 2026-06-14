@@ -15,20 +15,30 @@
  * └──────────────────────────────────────┘
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Dimensions } from 'react-native';
 import AppText from '../../../components/common/AppText';
 import { LineChart } from 'react-native-gifted-charts';
-import { GrowthTab, GrowthData, ProPlayerOption } from '../types/my.types';
+import { GrowthTab, GrowthData, ProPlayerOption, LineChartDataPoint } from '../types/my.types';
 import ProPlayerDropdown from './ProPlayerDropdown';
-import { MOCK_PRO_PLAYERS } from '../data/my.mockdata';
+import { getProGrowth } from '../../../api/userApi';
 
-// ─── 차트 너비: 화면 너비 - 카드 좌우 패딩 - 화면 좌우 패딩 ───────────────
+// ─── 차트 레이아웃 상수 ───────────────────────────────────────────────────
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const CHART_WIDTH = SCREEN_WIDTH - 40 - 40; // mx-5(20*2) + p-5(20*2)
+// 카드 내부 가용 폭 = 화면폭 - mx-5(20*2) - p-5(20*2)
+const CARD_INNER_WIDTH = SCREEN_WIDTH - 40 - 40;
+const Y_AXIS_WIDTH = 30; // Y축 라벨 영역(이 폭만큼 그래프 영역에서 빼야 박스를 안 넘침)
+const INITIAL_SPACING = 12;
+const END_SPACING = 16;
+// 실제 꺾은선이 그려지는 영역 폭(Y축 라벨 제외) → 보이는 영역(viewport) 폭
+const PLOT_WIDTH = CARD_INNER_WIDTH - Y_AXIS_WIDTH;
+// 포인트 간 "고정" 간격. 데이터가 많으면 이 간격을 유지한 채 좌우로 스크롤된다.
+const POINT_SPACING = 56;
 
 interface GrowthChartCardProps {
   data: GrowthData;
+  /** 실제 비교 프로 목록(드롭다운). 비어 있으면 프로 비교 탭 비활성. */
+  proPlayers: ProPlayerOption[];
 }
 
 // ─── Segmented Toggle 내부 컴포넌트 ──────────────────────────────────────────
@@ -71,15 +81,36 @@ function GrowthToggle({
   );
 }
 
-export default function GrowthChartCard({ data }: GrowthChartCardProps) {
+export default function GrowthChartCard({ data, proPlayers }: GrowthChartCardProps) {
   const [activeTab, setActiveTab] = useState<GrowthTab>('pro');
-  const [selectedPlayer, setSelectedPlayer] = useState<ProPlayerOption>(
-    data.pro.selectedPlayer,
+  const [selectedPlayer, setSelectedPlayer] = useState<ProPlayerOption | null>(
+    proPlayers[0] ?? null,
   );
+  const [proChart, setProChart] = useState<LineChartDataPoint[]>([]);
 
-  // 현재 탭에 따른 차트 데이터 선택
-  const chartData =
-    activeTab === 'pro' ? data.pro.chartData : data.consistency.chartData;
+  // 프로 목록이 로드되면 기본 선택(첫 프로)
+  useEffect(() => {
+    if (!selectedPlayer && proPlayers.length > 0) setSelectedPlayer(proPlayers[0]);
+  }, [proPlayers, selectedPlayer]);
+
+  // 선택한 프로의 점수 변화 추이를 서버에서 조회
+  useEffect(() => {
+    if (!selectedPlayer) return;
+    let active = true;
+    getProGrowth(Number(selectedPlayer.id))
+      .then((points) => {
+        if (active) setProChart(points.map((p) => ({ value: p.value, label: p.label })));
+      })
+      .catch(() => {
+        if (active) setProChart([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedPlayer]);
+
+  // 현재 탭에 따른 차트 데이터 선택 (프로 비교 = 선택 프로 추이, 일관성 = 기존 데이터)
+  const chartData = activeTab === 'pro' ? proChart : data.consistency.chartData;
 
   return (
     <View
@@ -98,21 +129,26 @@ export default function GrowthChartCard({ data }: GrowthChartCardProps) {
         <GrowthToggle activeTab={activeTab} onChange={setActiveTab} />
       </View>
 
-      {/* ── 프로 비교 탭: 선수 드롭다운 표시 ── */}
-      {activeTab === 'pro' && (
+      {/* ── 프로 비교 탭: 실제 비교 프로 드롭다운 ── */}
+      {activeTab === 'pro' && selectedPlayer && proPlayers.length > 0 && (
         <ProPlayerDropdown
-          players={MOCK_PRO_PLAYERS}
+          players={proPlayers}
           selected={selectedPlayer}
           onSelect={setSelectedPlayer}
         />
       )}
 
-      {/* ── 꺾은선 그래프 ── */}
-      <View style={{ marginLeft: -10 }}>
+      {/* ── 꺾은선 그래프 (고정 간격 + 좌우 스크롤) ── */}
+      <View style={{ overflow: 'hidden' }}>
         <LineChart
           data={chartData}
-          width={CHART_WIDTH}
+          width={PLOT_WIDTH}
           height={160}
+          // 포인트는 고정 간격, 데이터가 많으면 좌우로 스크롤
+          spacing={POINT_SPACING}
+          initialSpacing={INITIAL_SPACING}
+          endSpacing={END_SPACING}
+          yAxisLabelWidth={Y_AXIS_WIDTH}
           // 선 스타일
           color="#3BC1A8"
           thickness={2}
@@ -137,9 +173,6 @@ export default function GrowthChartCard({ data }: GrowthChartCardProps) {
           endFillColor="#3BC1A8"
           startOpacity={0.15}
           endOpacity={0}
-          // 애니메이션
-          isAnimated
-          animationDuration={600}
           // 커브 스타일 (부드러운 선)
           curved
         />

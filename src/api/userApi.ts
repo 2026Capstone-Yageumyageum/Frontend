@@ -60,3 +60,21 @@ export async function getMyAnalyses(): Promise<MyAnalysisItem[]> {
   if (!res.ok) throw new Error(`[분석목록 조회 실패] ${res.status}: ${await res.text()}`);
   return res.json() as Promise<MyAnalysisItem[]>;
 }
+
+/** 내가 비교당한 프로 목록 (마이페이지 그래프 드롭다운). */
+export interface ProSummary {
+  proId: number;
+  pitcherName: string;
+}
+export async function getComparedPros(): Promise<ProSummary[]> {
+  const res = await authFetch('/api/users/me/pros', { method: 'GET' });
+  if (!res.ok) throw new Error(`[비교 프로 목록 조회 실패] ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<ProSummary[]>;
+}
+
+/** 특정 프로에 대한 내 점수 변화 추이 (날짜 오름차순). 마이페이지 프로별 그래프용. */
+export async function getProGrowth(proId: number): Promise<GrowthPoint[]> {
+  const res = await authFetch(`/api/users/me/growth?proId=${proId}`, { method: 'GET' });
+  if (!res.ok) throw new Error(`[프로별 추이 조회 실패] ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<GrowthPoint[]>;
+}

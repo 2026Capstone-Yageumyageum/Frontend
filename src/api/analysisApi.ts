@@ -172,6 +172,8 @@ function safeParse<T>(text: string | null | undefined): T | null {
 export async function requestAnalysis(
   videoUri: string,
   pitchType?: string,
+  trimStartSec?: number,
+  trimEndSec?: number,
 ): Promise<UploadResponse> {
   const normalizedUri = videoUri.startsWith('file://') || videoUri.startsWith('content://')
     ? videoUri
@@ -185,6 +187,15 @@ export async function requestAnalysis(
     type: 'video/mp4',
   } as any);
   if (pitchType) form.append('pitchType', pitchType);
+  // 앱 트리머로 선택한 구간(초). 유효한 구간일 때만 전송 → 백엔드/Python이 그 구간만 분석.
+  if (
+    typeof trimStartSec === 'number' &&
+    typeof trimEndSec === 'number' &&
+    trimEndSec > trimStartSec
+  ) {
+    form.append('startSec', String(trimStartSec));
+    form.append('endSec', String(trimEndSec));
+  }
 
   const response = await authFetch('/api/analysis', {
     method: 'POST',
@@ -261,8 +272,8 @@ export async function pollAnalysisResult(
   opts: { intervalMs?: number; timeoutMs?: number; onTick?: (status: string) => void } = {},
 ): Promise<AnalysisResultResponse> {
   const intervalMs = opts.intervalMs ?? 2000;
-  // 첫 분석은 MediaPipe 모델 초기화 + 전체 프레임 포즈 추출로 느릴 수 있어 넉넉히 10분
-  const timeoutMs = opts.timeoutMs ?? 600000;
+  // 첫 분석은 MediaPipe 모델 초기화 + 포즈 추출로 느릴 수 있어 넉넉히 15분
+  const timeoutMs = opts.timeoutMs ?? 900000;
   const deadline = Date.now() + timeoutMs;
 
   // eslint-disable-next-line no-constant-condition

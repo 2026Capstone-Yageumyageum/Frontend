@@ -19,7 +19,15 @@ export type RootStackParamList = {
   Home: undefined; // 로그인 완료 후 메인 화면 (추후 구현)
   // 분석 대기 화면: 로컬 영상 uri를 받아 업로드 → 폴링까지 이 화면에서 처리한다
   AnalysisLoading:
-    | { videoUri?: string; pitchType?: string; isBestPitch?: boolean; reportType?: 'pro' | 'me' }
+    | {
+        videoUri?: string;
+        pitchType?: string;
+        // 앱 트리머로 선택한 분석 구간(초). 분석 요청 시 함께 전달된다.
+        trimStartSec?: number;
+        trimEndSec?: number;
+        isBestPitch?: boolean;
+        reportType?: 'pro' | 'me';
+      }
     | undefined;
   // AI 분석 결과 리포트 화면: 폴링 완료된 결과를 그대로 받는다
   Report:

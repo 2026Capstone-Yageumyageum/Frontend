@@ -15,8 +15,8 @@ import StatCard from '../components/StatCard';
 import PitchDistributionCard from '../components/PitchDistributionCard';
 import GrowthChartCard from '../components/GrowthChartCard';
 import AppText from '../../../components/common/AppText';
-import { GrowthData, PitchDistributionItem } from '../types/my.types';
-import { getMyStats, UserStats } from '../../../api/userApi';
+import { GrowthData, PitchDistributionItem, ProPlayerOption } from '../types/my.types';
+import { getMyStats, getComparedPros, UserStats } from '../../../api/userApi';
 import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 
 // ─── 통계 카드 아이콘 ────────────────────────────────────────
@@ -49,10 +49,11 @@ export default function MyScreen() {
   useDoubleBackExit();
 
   const [stats, setStats] = useState<UserStats | null>(null);
+  const [proPlayers, setProPlayers] = useState<ProPlayerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 탭에 들어올 때마다 최신 통계 갱신 (분석 직후 복귀 시 반영)
+  // 탭에 들어올 때마다 최신 통계 + 비교 프로 목록 갱신 (분석 직후 복귀 시 반영)
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -67,6 +68,22 @@ export default function MyScreen() {
         })
         .finally(() => {
           if (active) setLoading(false);
+        });
+      // 그래프 드롭다운용 실제 비교 프로 목록
+      getComparedPros()
+        .then((pros) => {
+          if (active) {
+            setProPlayers(
+              pros.map((p) => ({
+                id: String(p.proId),
+                name: p.pitcherName,
+                initial: p.pitcherName?.charAt(0) ?? 'P',
+              })),
+            );
+          }
+        })
+        .catch(() => {
+          if (active) setProPlayers([]);
         });
       return () => {
         active = false;
@@ -126,7 +143,7 @@ export default function MyScreen() {
             {pitchData.length > 0 && (
               <PitchDistributionCard data={pitchData} totalSessions={s.totalSessions} />
             )}
-            <GrowthChartCard data={growthData} />
+            <GrowthChartCard data={growthData} proPlayers={proPlayers} />
           </>
         ) : (
           <View className="items-center justify-center py-16 px-8">
