@@ -6,7 +6,7 @@ import { RootStackParamList } from '../../../types/navigation';
 import ReportHeader from '../components/ReportHeader';
 import ReportTabs from '../components/ReportTabs';
 import ReportSummaryCard from '../components/ReportSummaryCard';
-import SkeletonOverlayPlayer from '../components/SkeletonOverlayPlayer';
+import SkeletonOverlayPlayer, { PhaseSegment } from '../components/SkeletonOverlayPlayer';
 import PhaseFeedback from '../components/PhaseFeedback';
 import ComparePlayerSheet from '../components/ComparePlayerSheet';
 import PhaseScoreCard from '../components/PhaseScoreCard';
@@ -98,6 +98,22 @@ export default function ReportScreen() {
     return parseSkeletonCsv(match?.skeleton_data);
   }, [refData, selectedPlayer.id]);
 
+  // 선택된 프로 기준 단계 구간(프레임) — 재생 바를 단계별 색으로 나누는 데 사용
+  const phaseSegments = useMemo<PhaseSegment[]>(() => {
+    if (!result) return [];
+    const match = result.results.find((r) => String(r.proId) === selectedPlayer.id);
+    return (match?.detail?.phaseScores ?? [])
+      .filter((p) => p.userEndFrame > p.userStartFrame)
+      .map((p) => ({
+        phase: p.phase,
+        label: p.label,
+        startFrame: p.userStartFrame,
+        endFrame: p.userEndFrame,
+        proStartFrame: p.proStartFrame,
+        proEndFrame: p.proEndFrame,
+      }));
+  }, [result, selectedPlayer.id]);
+
   if (loading && !result) {
     return (
       <SafeAreaView className="flex-1 bg-surface-page items-center justify-center">
@@ -133,7 +149,9 @@ export default function ReportScreen() {
           userVideoUri={videoUri}
           userFrames={userFrames}
           proFrames={proFrames}
+          phases={phaseSegments}
           isSingleVideo={activeTab === 'insight'}
+          comparePlayerId={selectedPlayer.id}
         />
 
         {activeTab === 'timeline' ? (
