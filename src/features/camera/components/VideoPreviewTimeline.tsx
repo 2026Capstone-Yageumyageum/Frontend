@@ -76,13 +76,15 @@ export default function VideoPreviewTimeline({
         />
       </View>
 
-      {/* ── 시작점(고정 00:00) / 현재 재생 위치(동적) ── */}
+      {/* ── 현재 재생 위치(동적) / 총 길이(고정) ── */}
       <View className="flex-row justify-between">
-        {/* 좌측: 영상 시작점은 항상 00:00 고정 */}
-        <Text className="text-white/60 text-xs font-medium">00:00</Text>
-        {/* 우측: 현재 재생 시간이 실시간으로 업데이트됨 */}
+        {/* 좌측: 현재 재생 시간(00:00 → 현재)이 실시간 업데이트 */}
         <Text className="text-white/60 text-xs font-medium">
           {formatTime(currentTime)}
+        </Text>
+        {/* 우측: 영상 총 길이 */}
+        <Text className="text-white/60 text-xs font-medium">
+          {formatTime(totalDuration)}
         </Text>
       </View>
     </View>

@@ -1,11 +1,43 @@
 import React from 'react';
 import { View } from 'react-native';
 import AppText from '../../../components/common/AppText';
-import { PhaseFeedback as PhaseFeedbackType } from '../types/report.types';
+import { FeedbackMetric, PhaseFeedback as PhaseFeedbackType } from '../types/report.types';
 
 interface PhaseFeedbackProps {
   data: PhaseFeedbackType;
   reportType?: 'pro' | 'me';
+}
+
+/** 나 vs 선수 측정값 비교 막대 그래프(스켈레톤 색과 동일: 나=초록, 선수=보라). */
+function MetricCompareBar({ metric }: { metric: FeedbackMetric }) {
+  const { userValue, proValue } = metric;
+  const max = Math.max(Math.abs(userValue), Math.abs(proValue), 1e-4);
+  const row = (label: string, value: number, color: string) => (
+    <View className="flex-row items-center mb-1.5">
+      <AppText className="text-text-secondary text-[11px]" style={{ width: 28 }}>
+        {label}
+      </AppText>
+      <View className="flex-1 h-3 rounded-full bg-black/5 overflow-hidden mr-2">
+        <View
+          style={{
+            width: `${(Math.abs(value) / max) * 100}%`,
+            height: '100%',
+            backgroundColor: color,
+            borderRadius: 999,
+          }}
+        />
+      </View>
+      <AppText weight="bold" className="text-text-primary text-[11px]" style={{ width: 42, textAlign: 'right' }}>
+        {value.toFixed(2)}
+      </AppText>
+    </View>
+  );
+  return (
+    <View className="mt-2 bg-[#F7F8F8] rounded-xl px-3 py-2.5">
+      {row('나', userValue, '#3BC1A8')}
+      {row('선수', proValue, '#C9A8FF')}
+    </View>
+  );
 }
 
 export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbackProps) {
@@ -44,6 +76,7 @@ export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbac
         <AppText weight="medium" className="text-text-primary text-sm leading-5">
           {data.goodPoint}
         </AppText>
+        {data.goodMetric && <MetricCompareBar metric={data.goodMetric} />}
       </View>
 
       <View className="mb-4">
@@ -64,6 +97,7 @@ export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbac
         <AppText weight="medium" className="text-text-primary text-sm leading-5">
           {data.improvement}
         </AppText>
+        {data.improvementMetric && <MetricCompareBar metric={data.improvementMetric} />}
       </View>
     </View>
   );

@@ -49,7 +49,9 @@ export interface TokenResponse {
  * 이를 통해 잘못된 IP나 서버 미응답 시 앱이 무한정 멈춰있는 현상을 방지합니다.
  */
 async function fetchWithTimeout(resource: string, options: RequestInit = {}) {
-  const timeout = 5000; // 5초 타임아웃
+  // 서버 콜드 스타트(구글 인증서 최초 fetch + Spring/DB/Redis 워밍업)로 첫 요청이 5초를 넘겨
+  // 끊기던 문제 때문에 여유를 둔다. 첫 요청만 느리고 이후는 즉시 응답한다.
+  const timeout = 15000; // 15초 타임아웃
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
   

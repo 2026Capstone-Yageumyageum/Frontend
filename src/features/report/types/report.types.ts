@@ -1,10 +1,18 @@
+/** 나 vs 선수 측정값 비교(그래프로 표시) */
+export interface FeedbackMetric {
+  userValue: number; // 나
+  proValue: number; // 선수
+}
+
 export interface PhaseFeedback {
   phaseName: string; // e.g., "와인드업", "레그 리프트"
   score: number; // e.g., 76.9
   status: '양호' | '미흡';
   goodPoint: string;
+  goodMetric?: FeedbackMetric; // 잘된 점에 딸린 측정값(있으면 그래프)
   feedback: string;
   improvement: string;
+  improvementMetric?: FeedbackMetric; // 개선안에 딸린 측정값(있으면 그래프)
 }
 
 export interface ComparePlayer {

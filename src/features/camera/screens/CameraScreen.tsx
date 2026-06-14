@@ -31,7 +31,7 @@
  */
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -39,6 +39,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,6 +50,7 @@ import {
   useMicrophonePermission,
   CameraDevice,
   useVideoOutput,
+  CommonResolutions,
   CameraRef,
   Recorder,
 } from 'react-native-vision-camera';
@@ -73,14 +75,11 @@ import RecordingTimer from '../components/RecordingTimer';
 import VideoPreviewTimeline from '../components/VideoPreviewTimeline';
 import EditTooltip from '../components/EditTooltip';
 import SaveVideoModal from '../components/SaveVideoModal';
-import CameraTimer from '../components/CameraTimer';
 import PitcherGuideBox from '../components/PitcherGuideBox';
 import BestPitchRegisterSheet from '../components/BestPitchRegisterSheet';
 import PitchSelectionSheet from '../components/PitchSelectionSheet';
 import VideoTrimmerTimeline from '../components/VideoTrimmerTimeline';
 import PastVideoSelectionSheet, { PastVideo } from '../components/PastVideoSelectionSheet';
-import { useCameraFlow } from '../hooks/useCameraFlow';
-import { usePitchAnalysis } from '../hooks/usePitchAnalysis';
 import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
 
 export default function CameraScreen() {
@@ -89,6 +88,18 @@ export default function CameraScreen() {
   // ── 뒤로가기 네비게이션 ───────────────────────────────────────────────────────
   // goBack(): 이전 스택 화면 또는 탭으로 이동
   const navigation = useNavigation();
+
+  // ── 카메라 생명주기: 화면 포커스 + 앱 활성 상태 ───────────────────────────────
+  // 앱을 백그라운드로 내리거나 다른 탭/화면으로 이동하면 카메라 세션을 꺼서
+  // OS의 카메라 회수로 인한 'fatal Camera error'를 방지한다.
+  const isFocused = useIsFocused();
+  const [isAppActive, setIsAppActive] = useState(true);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      setIsAppActive(state === 'active');
+    });
+    return () => sub.remove();
+  }, []);
 
   // ── 권한 관리 (카메라 및 마이크) ──────────────────────────────────────────
   const { hasPermission: hasCameraPermission, requestPermission: requestCameraPermission } = useCameraPermission();
@@ -103,7 +114,12 @@ export default function CameraScreen() {
   const recorderRef = useRef<Recorder | null>(null);
 
   // ── 비디오 아웃풋 (녹화용) ──────────────────────────────────────────────────
-  const videoOutput = useVideoOutput({ enableAudio: true });
+  // 녹화 해상도를 1080p로 제한한다. 폰 기본값(4K=UHD)은 포즈 분석에 전혀 이득이 없으면서
+  // (MediaPipe가 내부적으로 ~256px로 축소) 파일 크기·업로드·서버 디코딩/추출 비용만 ~8배 키운다.
+  const videoOutput = useVideoOutput({
+    targetResolution: CommonResolutions.FHD_16_9,
+    enableAudio: true,
+  });
 
   // ── 플로우 상태 머신 ────────────────────────────────────────────────────────
   const [flowState, setFlowState] = useState<CameraFlowState>('IDLE');
@@ -419,11 +435,16 @@ export default function CameraScreen() {
     }
   }, []);
 
-  // PREVIEW 계열 진입 시 trimStart에서 재생 시작 (편집 완료 후 바로 반영)
-  // onPlaybackStatusUpdate의 범위 이탈 감지도 있지만,
-  // Video 마운트 직후 즉시 올바른 위치에서 시작하도록 useEffect로 이중 보장
+  // PREVIEW 계열은 PREVIEW / PREVIEW_EDIT_TIP / PREVIEW_SAVE_MODAL이 같은 프리뷰 영상을 공유한다.
+  // 이 그룹 "밖에서" 처음 진입할 때만 trimStart로 시킹한다.
+  // (그룹 내부 전환 — 예: 편집 팁 → 프리뷰 — 에서 매번 되감겨 영상이 처음으로 튀던 버그 수정)
+  const prevFlowRef = useRef<CameraFlowState>(flowState);
   useEffect(() => {
-    if (flowState === 'PREVIEW' || flowState === 'PREVIEW_EDIT_TIP') {
+    const prev = prevFlowRef.current;
+    prevFlowRef.current = flowState;
+    const inPreviewGroup = (s: CameraFlowState) =>
+      s === 'PREVIEW' || s === 'PREVIEW_EDIT_TIP' || s === 'PREVIEW_SAVE_MODAL';
+    if (inPreviewGroup(flowState) && !inPreviewGroup(prev)) {
       const timer = setTimeout(() => {
         previewVideoRef.current?.setPositionAsync(trimRangeRef.current.startSec * 1000);
       }, 50);
@@ -441,12 +462,25 @@ export default function CameraScreen() {
     }
   }, [flowState]);
 
-  /** 최고의 1구 등록 "완료" → 분석 대기 화면으로 이동 */
+  /** 최고의 1구 등록 "완료" → 분석 대기 화면으로 이동
+   *  업로드/폴링은 AnalysisLoading 화면에서 처리하므로, 여기서는 로컬 영상 uri만 넘긴다.
+   *  handleRetake()가 recordedVideo를 비우므로 uri를 먼저 캡처한다. */
   const handleSuccess = useCallback(() => {
+    const uri = recordedVideo?.uri;
+    // handleRetake()가 trimRange를 초기화하므로 먼저 캡처한다.
+    const { startSec, endSec } = trimRangeRef.current;
     handleRetake();
     // @ts-ignore - AnalysisLoading 스크린이 Root 스택에 정의되어 있음
-    navigation.navigate('AnalysisLoading', { isBestPitch: true });
-  }, [handleRetake, navigation]);
+    navigation.navigate('AnalysisLoading', {
+      videoUri: uri,
+      pitchType: selectedPitch ?? '직구',
+      // 사용자가 트리머로 자른 구간만 분석하도록 전달
+      trimStartSec: startSec,
+      trimEndSec: endSec,
+      isBestPitch: cameraMode === 'my',
+      reportType: cameraMode === 'my' ? 'me' : 'pro',
+    });
+  }, [recordedVideo, handleRetake, navigation, cameraMode, selectedPitch]);
 
   /**
    * 갤러리에서 영상 선택 후 프리뷰 플로우로 진입
@@ -581,7 +615,8 @@ export default function CameraScreen() {
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
             device={device as CameraDevice}
-            isActive={isViewfinder}
+            // 뷰파인더 상태이면서, 화면이 포커스돼 있고, 앱이 활성일 때만 카메라 활성화
+            isActive={isViewfinder && isFocused && isAppActive}
             outputs={[videoOutput]}
           />
 
