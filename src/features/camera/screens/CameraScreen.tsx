@@ -465,10 +465,14 @@ export default function CameraScreen() {
   /** 최고의 1구 등록 "완료" → 분석 대기 화면으로 이동
    *  업로드/폴링은 AnalysisLoading 화면에서 처리하므로, 여기서는 로컬 영상 uri만 넘긴다.
    *  handleRetake()가 recordedVideo를 비우므로 uri를 먼저 캡처한다. */
-  const handleSuccess = useCallback(() => {
+  const handleSuccess = useCallback((register: boolean) => {
     const uri = recordedVideo?.uri;
     // handleRetake()가 trimRange를 초기화하므로 먼저 캡처한다.
     const { startSec, endSec } = trimRangeRef.current;
+    // '내 베스트 투구' 모드면 선택한 최고의 1구(과거 영상)와 비교한다.
+    const isMyMode = cameraMode === 'my';
+    const bestPitchVideoId =
+      isMyMode && selectedPastVideo ? Number(selectedPastVideo.id) : undefined;
     handleRetake();
     // @ts-ignore - AnalysisLoading 스크린이 Root 스택에 정의되어 있음
     navigation.navigate('AnalysisLoading', {
@@ -477,10 +481,14 @@ export default function CameraScreen() {
       // 사용자가 트리머로 자른 구간만 분석하도록 전달
       trimStartSec: startSec,
       trimEndSec: endSec,
-      isBestPitch: cameraMode === 'my',
-      reportType: cameraMode === 'my' ? 'me' : 'pro',
+      // '베스트 피칭' 뱃지 = 이 영상을 최고의 1구로 등록했는지 여부
+      isBestPitch: register,
+      reportType: isMyMode ? 'me' : 'pro',
+      // 최고의 1구 비교 대상 + 분석 후 등록 여부
+      bestPitchVideoId,
+      registerBest: register,
     });
-  }, [recordedVideo, handleRetake, navigation, cameraMode, selectedPitch]);
+  }, [recordedVideo, handleRetake, navigation, cameraMode, selectedPitch, selectedPastVideo]);
 
   /**
    * 갤러리에서 영상 선택 후 프리뷰 플로우로 진입

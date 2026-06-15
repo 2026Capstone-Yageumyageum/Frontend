@@ -211,6 +211,61 @@ export async function requestAnalysis(
 }
 
 /**
+ * 최고의 1구 비교 분석 시작.
+ * 프로 대신 내 "최고의 1구"(bestPitchVideoId) 골격과 비교한다. videoId를 즉시 반환(202).
+ */
+export async function requestBestPitchAnalysis(
+  videoUri: string,
+  bestPitchVideoId: number,
+  pitchType?: string,
+  trimStartSec?: number,
+  trimEndSec?: number,
+): Promise<UploadResponse> {
+  const normalizedUri =
+    videoUri.startsWith('file://') || videoUri.startsWith('content://')
+      ? videoUri
+      : `file://${videoUri}`;
+
+  const form = new FormData();
+  form.append('file', {
+    uri: normalizedUri,
+    name: fileNameFromUri(normalizedUri),
+    type: 'video/mp4',
+  } as any);
+  form.append('bestPitchVideoId', String(bestPitchVideoId));
+  if (pitchType) form.append('pitchType', pitchType);
+  if (
+    typeof trimStartSec === 'number' &&
+    typeof trimEndSec === 'number' &&
+    trimEndSec > trimStartSec
+  ) {
+    form.append('startSec', String(trimStartSec));
+    form.append('endSec', String(trimEndSec));
+  }
+
+  const response = await authFetch('/api/analysis/best-pitch', {
+    method: 'POST',
+    body: form,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`[최고의 1구 비교 업로드 실패] ${response.status}: ${errorText}`);
+  }
+
+  return response.json() as Promise<UploadResponse>;
+}
+
+/** 영상을 "최고의 1구"로 등록(구종당 1개). */
+export async function registerBestPitch(videoId: number): Promise<void> {
+  const response = await authFetch(`/api/analysis/${videoId}/best-pitch`, { method: 'POST' });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`[최고의 1구 등록 실패] ${response.status}: ${errorText}`);
+  }
+}
+
+/**
  * 분석 결과 조회. detailJson은 파싱해서 detail 필드로 채워준다.
  * status가 PENDING이면 아직 분석 중이다(폴링 필요).
  */

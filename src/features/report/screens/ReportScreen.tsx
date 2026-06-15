@@ -32,6 +32,8 @@ export default function ReportScreen() {
   const reportType = route.params?.reportType ?? 'pro';
   const videoId = route.params?.videoId;
   const videoUri = route.params?.videoUri;
+  // 최고의 1구 비교('me')일 때 오른쪽에 그릴 최고의 1구 골격을 가져올 영상 id
+  const bestPitchVideoId = route.params?.bestPitchVideoId;
 
   // 결과: 분석 직후엔 params로 받고, 피드에서 진입하면 videoId로 조회한다.
   const [result, setResult] = useState<AnalysisResultResponse | null>(
@@ -64,9 +66,11 @@ export default function ReportScreen() {
     result && result.results.length > 0 ? buildComparePlayers(result) : MOCK_COMPARE_PLAYERS;
   const selectedPlayer = players.find((p) => p.id === selectedId) ?? players[0];
 
-  // 스켈레톤 오버레이용 데이터: 내 골격 CSV + 프로 레퍼런스 골격 목록
+  // 스켈레톤 오버레이용 데이터: 내 골격 CSV + (프로 레퍼런스 | 최고의 1구) 골격
   const [userSkeletonCsv, setUserSkeletonCsv] = useState<string | null>(null);
   const [refData, setRefData] = useState<ReferenceData[] | null>(null);
+  // 최고의 1구 비교일 때 오른쪽에 그릴 최고의 1구 골격 CSV
+  const [bestSkeletonCsv, setBestSkeletonCsv] = useState<string | null>(null);
 
   useEffect(() => {
     if (!videoId) return;
@@ -78,25 +82,45 @@ export default function ReportScreen() {
       .catch(() => {
         /* 골격 미수신 시 오버레이만 비워둔다 */
       });
-    getReferenceData()
-      .then((d) => {
-        if (active) setRefData(d);
+    // 프로 비교일 때만 프로 레퍼런스 목록을 받는다.
+    if (reportType !== 'me') {
+      getReferenceData()
+        .then((d) => {
+          if (active) setRefData(d);
+        })
+        .catch(() => {
+          /* 프로 레퍼런스 미수신 시 프로 스켈레톤만 비워둔다 */
+        });
+    }
+    return () => {
+      active = false;
+    };
+  }, [videoId, reportType]);
+
+  // 최고의 1구('me') 비교: 비교 대상 영상의 골격을 가져온다.
+  useEffect(() => {
+    if (reportType !== 'me' || typeof bestPitchVideoId !== 'number') return;
+    let active = true;
+    getSkeleton(bestPitchVideoId)
+      .then((s) => {
+        if (active) setBestSkeletonCsv(s.skeletonData);
       })
       .catch(() => {
-        /* 프로 레퍼런스 미수신 시 프로 스켈레톤만 비워둔다 */
+        /* 최고의 1구 골격 미수신 시 오른쪽만 비워둔다 */
       });
     return () => {
       active = false;
     };
-  }, [videoId]);
+  }, [reportType, bestPitchVideoId]);
 
   const userFrames = useMemo(() => parseSkeletonCsv(userSkeletonCsv), [userSkeletonCsv]);
-  // 선택된 프로의 skeleton만 파싱(선수 변경 시 갱신)
+  // 오른쪽 비교 골격: 'me'면 최고의 1구, 'pro'면 선택된 프로 (선수 변경 시 갱신)
   const proFrames = useMemo(() => {
+    if (reportType === 'me') return parseSkeletonCsv(bestSkeletonCsv);
     if (!refData) return [];
     const match = refData.find((r) => String(r.proId) === selectedPlayer.id);
     return parseSkeletonCsv(match?.skeleton_data);
-  }, [refData, selectedPlayer.id]);
+  }, [reportType, bestSkeletonCsv, refData, selectedPlayer.id]);
 
   // 선택된 프로 기준 단계 구간(프레임) — 재생 바를 단계별 색으로 나누는 데 사용
   const phaseSegments = useMemo<PhaseSegment[]>(() => {
@@ -123,7 +147,7 @@ export default function ReportScreen() {
   }
 
   const currentData = result
-    ? { ...buildReportData(result, selectedPlayer), isBestPitch }
+    ? { ...buildReportData(result, selectedPlayer, reportType), isBestPitch }
     : {
         ...MOCK_REPORT_DATA,
         isBestPitch,
@@ -152,6 +176,8 @@ export default function ReportScreen() {
           phases={phaseSegments}
           isSingleVideo={activeTab === 'insight'}
           comparePlayerId={selectedPlayer.id}
+          compareLabel={reportType === 'me' ? '최고의 1구' : '프로 스켈레톤'}
+          compareShortLabel={reportType === 'me' ? '베스트' : '프로'}
         />
 
         {activeTab === 'timeline' ? (

@@ -3,7 +3,12 @@ import { View, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../../types/navigation';
 import AppText from '../../../components/common/AppText';
-import { requestAnalysis, pollAnalysisResult } from '../../../api/analysisApi';
+import {
+  requestAnalysis,
+  requestBestPitchAnalysis,
+  registerBestPitch,
+  pollAnalysisResult,
+} from '../../../api/analysisApi';
 
 /**
  * 분석 대기 화면.
@@ -30,17 +35,39 @@ export default function AnalysisLoadingScreen() {
           throw new Error('분석할 영상이 없습니다.');
         }
 
+        const bestPitchVideoId = route.params?.bestPitchVideoId;
+
         // 1) 업로드 → videoId 확보 (202 즉시 반환). 구종 + 트림 구간도 함께 전달.
-        const { videoId } = await requestAnalysis(
-          videoUri,
-          route.params?.pitchType,
-          route.params?.trimStartSec,
-          route.params?.trimEndSec,
-        );
+        //    bestPitchVideoId가 있으면 프로 대신 내 최고의 1구와 비교한다.
+        const { videoId } =
+          typeof bestPitchVideoId === 'number'
+            ? await requestBestPitchAnalysis(
+                videoUri,
+                bestPitchVideoId,
+                route.params?.pitchType,
+                route.params?.trimStartSec,
+                route.params?.trimEndSec,
+              )
+            : await requestAnalysis(
+                videoUri,
+                route.params?.pitchType,
+                route.params?.trimStartSec,
+                route.params?.trimEndSec,
+              );
 
         // 2) 결과 폴링 (status COMPLETED 까지)
         setStatusText('AI가 투구 자세를 분석하고 있어요');
         const result = await pollAnalysisResult(videoId);
+
+        // 2-1) 사용자가 이 영상을 최고의 1구로 등록하기로 했으면 등록한다(분석 완료 후).
+        if (route.params?.registerBest) {
+          try {
+            await registerBestPitch(videoId);
+          } catch (e) {
+            // 등록 실패는 리포트 진입을 막지 않는다(로그만).
+            console.warn('[최고의 1구 등록 실패]', e);
+          }
+        }
 
         // 3) 결과를 Report 화면으로 전달
         // @ts-ignore - Report 스크린은 Root 스택에 정의되어 있음
@@ -50,6 +77,7 @@ export default function AnalysisLoadingScreen() {
           videoUri, // 내 로컬 영상 uri를 넘겨 결과 화면에서 스켈레톤 오버레이로 재생
           isBestPitch: route.params?.isBestPitch,
           reportType: route.params?.reportType,
+          bestPitchVideoId,
         });
       } catch (error) {
         Alert.alert(

@@ -8,8 +8,8 @@ interface PhaseFeedbackProps {
   reportType?: 'pro' | 'me';
 }
 
-/** 나 vs 선수 측정값 비교 막대 그래프(스켈레톤 색과 동일: 나=초록, 선수=보라). */
-function MetricCompareBar({ metric }: { metric: FeedbackMetric }) {
+/** 나 vs 비교대상 측정값 비교 막대 그래프(스켈레톤 색과 동일: 나=초록, 비교=보라). */
+function MetricCompareBar({ metric, proLabel = '선수' }: { metric: FeedbackMetric; proLabel?: string }) {
   const { userValue, proValue } = metric;
   const max = Math.max(Math.abs(userValue), Math.abs(proValue), 1e-4);
   const row = (label: string, value: number, color: string) => (
@@ -35,13 +35,15 @@ function MetricCompareBar({ metric }: { metric: FeedbackMetric }) {
   return (
     <View className="mt-2 bg-[#F7F8F8] rounded-xl px-3 py-2.5">
       {row('나', userValue, '#3BC1A8')}
-      {row('선수', proValue, '#C9A8FF')}
+      {row(proLabel, proValue, '#C9A8FF')}
     </View>
   );
 }
 
 export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbackProps) {
   const isGood = data.status === '양호';
+  // 그래프 두 번째 막대 라벨: 최고의 1구 비교에선 '베스트'(좁은 칸 폭에 맞춰 축약)
+  const proLabel = reportType === 'me' ? '베스트' : '선수';
   const badgeBg = isGood ? 'bg-[#E8F8F5]' : 'bg-[#FAF4EB]';
   const badgeTextColor = isGood ? '#3BC1A8' : '#D3735D';
   const dotColor = isGood ? '#A3C8BC' : '#DDBA82';
@@ -76,7 +78,7 @@ export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbac
         <AppText weight="medium" className="text-text-primary text-sm leading-5">
           {data.goodPoint}
         </AppText>
-        {data.goodMetric && <MetricCompareBar metric={data.goodMetric} />}
+        {data.goodMetric && <MetricCompareBar proLabel={proLabel} metric={data.goodMetric} />}
       </View>
 
       <View className="mb-4">
@@ -97,7 +99,7 @@ export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbac
         <AppText weight="medium" className="text-text-primary text-sm leading-5">
           {data.improvement}
         </AppText>
-        {data.improvementMetric && <MetricCompareBar metric={data.improvementMetric} />}
+        {data.improvementMetric && <MetricCompareBar proLabel={proLabel} metric={data.improvementMetric} />}
       </View>
     </View>
   );

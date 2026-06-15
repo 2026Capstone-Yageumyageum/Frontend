@@ -27,6 +27,10 @@ export type RootStackParamList = {
         trimEndSec?: number;
         isBestPitch?: boolean;
         reportType?: 'pro' | 'me';
+        // 최고의 1구 비교 모드: 비교 대상(최고의 1구) 영상 id. 있으면 프로 대신 이 영상과 비교한다.
+        bestPitchVideoId?: number;
+        // 분석 완료 후 이 영상을 최고의 1구로 등록할지 여부(공통_5에서 토글).
+        registerBest?: boolean;
       }
     | undefined;
   // AI 분석 결과 리포트 화면: 폴링 완료된 결과를 그대로 받는다
@@ -38,6 +42,8 @@ export type RootStackParamList = {
         videoUri?: string;
         isBestPitch?: boolean;
         reportType?: 'pro' | 'me';
+        // 최고의 1구 비교 리포트: 오른쪽에 그릴 최고의 1구 골격을 가져올 영상 id.
+        bestPitchVideoId?: number;
       }
     | undefined;
 };

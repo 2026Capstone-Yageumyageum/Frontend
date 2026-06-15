@@ -24,9 +24,11 @@ import {
   TouchableOpacity,
   Animated,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useDismissibleSheet } from '../hooks/useDismissibleSheet';
+import { getBestPitches } from '../../../api/userApi';
 
 const SHEET_HEIGHT = 400;
 
@@ -36,12 +38,6 @@ export interface PastVideo {
   date: string;
   thumbnailUrl?: string; // 추후 썸네일 이미지 적용
 }
-
-const MOCK_PAST_VIDEOS: PastVideo[] = [
-  { id: '1', pitchType: '직구', date: '24.04.28' },
-  { id: '2', pitchType: '슬라이더', date: '24.04.20' },
-  { id: '3', pitchType: '커브', date: '24.04.15' },
-];
 
 interface PastVideoSelectionSheetProps {
   onClose: () => void;
@@ -53,6 +49,35 @@ export default function PastVideoSelectionSheet({
   onNext,
 }: PastVideoSelectionSheetProps) {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
+  // 구종별 "최고의 1구"를 서버에서 받아 비교 대상 후보로 보여준다.
+  const [pastVideos, setPastVideos] = useState<PastVideo[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    getBestPitches()
+      .then((cards) => {
+        if (!active) return;
+        setPastVideos(
+          cards.map((c) => ({
+            id: String(c.videoId),
+            pitchType: c.pitchType,
+            date: c.date,
+          })),
+        );
+      })
+      .catch((e) => {
+        if (active) setError(e instanceof Error ? e.message : '목록을 불러오지 못했습니다.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const translateY = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
   // 드래그-to-dismiss 훅 (닫기 버튼 탭, 드래그 모두 처리)
@@ -72,7 +97,7 @@ export default function PastVideoSelectionSheet({
   }, [translateY]);
 
   const handleNext = () => {
-    const selected = MOCK_PAST_VIDEOS.find((v) => v.id === selectedVideoId);
+    const selected = pastVideos.find((v) => v.id === selectedVideoId);
     if (selected) {
       onNext(selected);
     }
@@ -121,7 +146,19 @@ export default function PastVideoSelectionSheet({
         </Text>
 
         <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
-          {MOCK_PAST_VIDEOS.map((video) => {
+          {loading && (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#3BC1A8" />
+            </View>
+          )}
+          {!loading && pastVideos.length === 0 && (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <Text style={{ color: '#8E949A', fontSize: 13, textAlign: 'center' }}>
+                {error ?? '등록된 최고의 1구가 없어요.\n먼저 투구를 분석하고 최고의 1구로 등록해보세요.'}
+              </Text>
+            </View>
+          )}
+          {pastVideos.map((video) => {
             const isSelected = selectedVideoId === video.id;
             return (
               <TouchableOpacity

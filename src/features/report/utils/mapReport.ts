@@ -49,8 +49,9 @@ const PHASE_GUIDELINE_KO: Record<string, string> = {
   follow_through: '던진 뒤 팔이 반대쪽으로 자연스럽게 따라 내려오며 균형을 잡고 마무리하세요.',
 };
 
-// "측정값 나 0.38 vs 선수 0.35" 추출(그래프용) — 매칭된 문구는 본문에서 제거한다.
-const MEASURE_RE = /\s*(?:[—–-]\s*)?측정값\s*나\s*(-?\d+(?:\.\d+)?)\s*vs\s*선수\s*(-?\d+(?:\.\d+)?)/;
+// "측정값 나 0.38 vs 선수 0.35"(또는 "vs 최고의 1구 0.35") 추출(그래프용) — 매칭된 문구는 본문에서 제거한다.
+const MEASURE_RE =
+  /\s*(?:[—–-]\s*)?측정값\s*나\s*(-?\d+(?:\.\d+)?)\s*vs\s*(?:선수|최고의\s*1구)\s*(-?\d+(?:\.\d+)?)/;
 
 /**
  * 피드백 문구에서 측정값(나/선수)을 분리해 그래프 데이터로 만들고,
@@ -92,11 +93,17 @@ export function buildComparePlayers(result: AnalysisResultResponse): ComparePlay
     .sort((a, b) => b.similarity - a.similarity);
 }
 
-/** 선택된 선수 기준 리포트 데이터 생성 */
+/** 선택된 선수 기준 리포트 데이터 생성.
+ *  reportType='me'(최고의 1구 비교)에서는 비교 대상을 "최고의 1구"로 표기하고,
+ *  "다름 = 무조건 잘못"이 아니라는 톤으로 폴백 문구를 완화한다. */
 export function buildReportData(
   result: AnalysisResultResponse,
   player: ComparePlayer,
+  reportType: 'pro' | 'me' = 'pro',
 ): ReportData {
+  // 비교 대상 라벨(폴백 문구용). 백엔드 상세 문구는 이미 라벨이 적용돼 내려온다.
+  const refLabel = reportType === 'me' ? '최고의 1구' : '선수';
+  const isMe = reportType === 'me';
   const match: PitchingComparison | undefined = result.results.find(
     (r) => String(r.proId) === player.id,
   );
@@ -115,9 +122,13 @@ export function buildReportData(
   }
 
   // 구간별 good/bad 피드백을 phase 키로 인덱싱
+  // good은 '먼저 온 것(=강도 높은 것) 우선'으로 둔다. 백엔드가 강도순 정렬로 내려주므로
+  // 최고의 1구 비교의 방향성 코멘트(큰 차이)가 같은 구간의 일반 칭찬에 덮이지 않는다.
   const goodByPhase = new Map<string, string>();
   const badByPhase = new Map<string, string>();
-  detail.feedback?.good?.forEach((f) => f.phase && goodByPhase.set(f.phase, f.message));
+  detail.feedback?.good?.forEach((f) => {
+    if (f.phase && !goodByPhase.has(f.phase)) goodByPhase.set(f.phase, f.message);
+  });
   detail.feedback?.bad?.forEach((f) => f.phase && badByPhase.set(f.phase, f.message));
 
   const feedbacks: PhaseFeedback[] = detail.phaseScores.map((p) => {
@@ -134,14 +145,18 @@ export function buildReportData(
       realGood ??
       (flagged
         ? `${name} 구간의 기본 동작 골격은 유지되고 있습니다.`
-        : `${name} 구간은 전체 자세 흐름이 선수와 비교적 안정적으로 유사합니다.`);
+        : `${name} 구간은 전체 자세 흐름이 ${refLabel}와 비교적 안정적으로 유사합니다.`);
     const badRaw =
       realBad ??
       (score >= 70
         ? '두드러진 개선 포인트는 없습니다. 세부 정밀도를 높이면 더 향상됩니다.'
-        : `${name} 구간은 선수와 차이가 있습니다. ${
-            PHASE_GUIDELINE_KO[p.phase] ?? '선수의 같은 구간과 프레임 단위로 비교해 보세요.'
-          }`);
+        : isMe
+          ? `${name} 구간은 최고의 1구와 다릅니다. 차이가 늘 나쁜 것은 아니니, 위 코멘트와 함께 확인하세요. ${
+              PHASE_GUIDELINE_KO[p.phase] ?? '최고의 1구의 같은 구간과 프레임 단위로 비교해 보세요.'
+            }`
+          : `${name} 구간은 선수와 차이가 있습니다. ${
+              PHASE_GUIDELINE_KO[p.phase] ?? '선수의 같은 구간과 프레임 단위로 비교해 보세요.'
+            }`);
     const goodParsed = splitMetric(goodRaw);
     const badParsed = splitMetric(badRaw);
     return {
@@ -153,10 +168,12 @@ export function buildReportData(
       // 점수는 상단 뱃지에 이미 있으므로 본문엔 정성적 요약만.
       feedback:
         score >= 80
-          ? '선수와 매우 유사한 구간입니다.'
+          ? `${refLabel}와 매우 유사한 구간입니다.`
           : score >= 70
             ? '대체로 유사하나 세부 동작에서 일부 차이가 있습니다.'
-            : '선수와 자세 차이가 있어 개선이 필요합니다.',
+            : isMe
+              ? '최고의 1구와 자세가 다른 구간이에요. 차이가 늘 나쁜 것은 아닙니다.'
+              : '선수와 자세 차이가 있어 개선이 필요합니다.',
       improvement: badParsed.text,
       improvementMetric: badParsed.metric,
     };

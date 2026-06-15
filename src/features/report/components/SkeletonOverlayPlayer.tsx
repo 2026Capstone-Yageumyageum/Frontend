@@ -59,6 +59,10 @@ interface SkeletonOverlayPlayerProps {
   isSingleVideo?: boolean;
   /** 선택된 비교 프로 id — 바뀌면 영상을 처음으로 되감고 정지한다 */
   comparePlayerId?: string;
+  /** 오른쪽(비교 대상) 박스 라벨. 프로 비교="프로 스켈레톤", 최고의 1구 비교="최고의 1구" */
+  compareLabel?: string;
+  /** 페이즈 바의 짧은 라벨(24px). 프로="프로", 최고의 1구="베스트" */
+  compareShortLabel?: string;
 }
 
 interface NaturalSize {
@@ -255,6 +259,8 @@ export default function SkeletonOverlayPlayer({
   phases = [],
   isSingleVideo,
   comparePlayerId,
+  compareLabel = '프로 스켈레톤',
+  compareShortLabel = '프로',
 }: SkeletonOverlayPlayerProps) {
   const isGoodScore = score >= 70;
   const timelineColor = isGoodScore ? '#A3C8BC' : '#DCA876';
@@ -638,7 +644,7 @@ export default function SkeletonOverlayPlayer({
               color="#C9A8FF"
             />
             <View className="absolute bottom-1 left-0 right-0 items-center">
-              <AppText className="text-text-secondary text-[10px]">프로 스켈레톤</AppText>
+              <AppText className="text-text-secondary text-[10px]">{compareLabel}</AppText>
             </View>
           </View>
         )}
@@ -672,7 +678,7 @@ export default function SkeletonOverlayPlayer({
         <View className="flex-1">
           <PhaseBar label="나" bands={userBands} progressPct={progressPct} fallbackColor={timelineColor} />
           {!isSingleVideo && (
-            <PhaseBar label="프로" bands={proBands} progressPct={proProgressPct} fallbackColor="#C9A8FF" />
+            <PhaseBar label={compareShortLabel} bands={proBands} progressPct={proProgressPct} fallbackColor="#C9A8FF" />
           )}
         </View>
 

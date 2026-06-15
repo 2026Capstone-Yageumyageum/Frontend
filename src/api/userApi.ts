@@ -78,3 +78,42 @@ export async function getProGrowth(proId: number): Promise<GrowthPoint[]> {
   if (!res.ok) throw new Error(`[프로별 추이 조회 실패] ${res.status}: ${await res.text()}`);
   return res.json() as Promise<GrowthPoint[]>;
 }
+
+// ─── 최고의 1구(일관성 탭) ─────────────────────────────────────
+/** 일관성 탭 구종별 "최고의 1구" 카드 */
+export interface BestPitchCard {
+  videoId: number; // 최고의 1구 영상 id (비교 대상)
+  pitchType: string;
+  date: string;
+  bestConsistency: number; // 최고 일관성(없으면 0)
+  sessionCount: number; // 비교 횟수
+  avgConsistency: number; // 평균 일관성(없으면 0)
+}
+
+/** 최고의 1구와 비교된 내 기록 한 줄 (카드 펼침 목록) */
+export interface BestPitchComparisonItem {
+  videoId: number; // 비교한 내 영상 id (리포트 진입용)
+  bestPitchVideoId: number; // 비교 대상 최고의 1구 id
+  date: string;
+  pitchType: string;
+  consistency: number; // 0~100
+}
+
+/** 구종별 최고의 1구 카드 목록 */
+export async function getBestPitches(): Promise<BestPitchCard[]> {
+  const res = await authFetch('/api/users/me/best-pitches', { method: 'GET' });
+  if (!res.ok) throw new Error(`[최고의 1구 목록 조회 실패] ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<BestPitchCard[]>;
+}
+
+/** 특정 구종 최고의 1구와 비교된 기록 목록 */
+export async function getBestPitchComparisons(
+  pitchType: string,
+): Promise<BestPitchComparisonItem[]> {
+  const res = await authFetch(
+    `/api/users/me/best-pitches/${encodeURIComponent(pitchType)}/comparisons`,
+    { method: 'GET' },
+  );
+  if (!res.ok) throw new Error(`[비교 기록 조회 실패] ${res.status}: ${await res.text()}`);
+  return res.json() as Promise<BestPitchComparisonItem[]>;
+}
