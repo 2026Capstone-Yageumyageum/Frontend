@@ -63,6 +63,11 @@ interface SkeletonOverlayPlayerProps {
   compareLabel?: string;
   /** 페이즈 바의 짧은 라벨(24px). 프로="프로", 최고의 1구="베스트" */
   compareShortLabel?: string;
+  /**
+   * 외부에서 특정 프레임으로 이동을 요청할 때 쓴다.
+   * 같은 프레임을 다시 눌러도 동작해야 하므로 nonce로 변화를 알린다.
+   */
+  seekRequest?: { frame: number; nonce: number };
 }
 
 interface NaturalSize {
@@ -261,6 +266,7 @@ export default function SkeletonOverlayPlayer({
   comparePlayerId,
   compareLabel = '프로 스켈레톤',
   compareShortLabel = '프로',
+  seekRequest,
 }: SkeletonOverlayPlayerProps) {
   const isGoodScore = score >= 70;
   const timelineColor = isGoodScore ? '#A3C8BC' : '#DCA876';
@@ -409,6 +415,15 @@ export default function SkeletonOverlayPlayer({
     }
     setPositionSec(t);
   };
+
+  // 외부(구간 지표의 "이 순간 보기")에서 온 이동 요청 처리.
+  // seekToPhase는 이미 프레임 → 시간 변환과 영상 seek를 담당하므로 그대로 재사용한다.
+  useEffect(() => {
+    if (!seekRequest) return;
+    void seekToPhase(seekRequest.frame);
+    // nonce가 바뀔 때만 반응한다. frame이 같아도 다시 눌렀다면 이동해야 한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekRequest?.nonce]);
 
   // 내 스켈레톤: 재생 시간 기준 최근접 프레임
   const userFrame = useMemo<SkeletonFrame | null>(() => {

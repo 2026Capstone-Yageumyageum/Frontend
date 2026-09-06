@@ -13,7 +13,7 @@
  * 남의 피드백이 내 리포트인 것처럼 표시됐습니다.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -160,6 +160,15 @@ export default function ReportScreen() {
       }));
   }, [result, selectedPlayerId]);
 
+  // 구간 지표의 "이 순간 보기" → 플레이어로 이동 + 플레이어가 보이도록 스크롤.
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [seekRequest, setSeekRequest] = useState<{ frame: number; nonce: number } | null>(null);
+
+  const handleSeekFrame = useCallback((frame: number) => {
+    setSeekRequest((prev) => ({ frame, nonce: (prev?.nonce ?? 0) + 1 }));
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  }, []);
+
   // ── ① 로딩 ────────────────────────────────────────────────────────────────
   if (loading && !result) {
     return (
@@ -228,7 +237,7 @@ export default function ReportScreen() {
 
       <ReportTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scrollViewRef} className="flex-1" showsVerticalScrollIndicator={false}>
         <ReportSummaryCard
           data={currentData}
           reportType={reportType}
@@ -245,6 +254,7 @@ export default function ReportScreen() {
           comparePlayerId={selectedPlayer.id}
           compareLabel={reportType === 'me' ? '최고의 1구' : '프로 스켈레톤'}
           compareShortLabel={reportType === 'me' ? '베스트' : '프로'}
+          seekRequest={seekRequest ?? undefined}
         />
 
         {/*
@@ -262,7 +272,12 @@ export default function ReportScreen() {
         ) : activeTab === 'timeline' ? (
           <View className="mt-2">
             {currentData.feedbacks.map((feedback, index) => (
-              <PhaseFeedback key={index} data={feedback} reportType={reportType} />
+              <PhaseFeedback
+                key={index}
+                data={feedback}
+                reportType={reportType}
+                onSeekFrame={handleSeekFrame}
+              />
             ))}
           </View>
         ) : (
