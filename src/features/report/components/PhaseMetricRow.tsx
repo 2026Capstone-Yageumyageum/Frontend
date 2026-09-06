@@ -26,7 +26,9 @@ interface PhaseMetricRowProps {
 }
 
 export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowProps) {
-  const style = STATUS_STYLE[metric.status];
+  // status는 백엔드에서 plain String으로 내려온다. 알려진 4개 값이 아니어도(향후 추가된 값 등)
+  // 화면이 죽지 않도록 '측정 못함' 스타일로 대체한다.
+  const style = STATUS_STYLE[metric.status] ?? STATUS_STYLE.unavailable;
   const measured = metric.userValue !== null && metric.proValue !== null;
   const canSeek = onSeekFrame !== undefined && metric.userFrame !== null;
 
@@ -43,10 +45,11 @@ export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowPr
         </View>
       </View>
 
-      {measured ? (
+      {metric.userValue !== null && metric.proValue !== null ? (
         <View className="flex-row items-center mb-1">
           <AppText className="text-text-secondary text-xs">
-            나 {metric.userValue}  ·  기준 {metric.proValue}
+            {/* 아래 "차이/허용" 줄과 자릿수를 맞춘다. 단위 없는 정규화 좌표라 단위는 붙이지 않는다. */}
+            나 {metric.userValue.toFixed(2)}  ·  기준 {metric.proValue.toFixed(2)}
           </AppText>
         </View>
       ) : (

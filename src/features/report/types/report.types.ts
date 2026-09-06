@@ -80,4 +80,13 @@ export interface ReportData {
   hasDetail: boolean;
   feedbacks: PhaseFeedback[];
   insight: InsightData;
+  /**
+   * 구간 자체가 감지되지 않아(phaseScores에 없음) 카드가 없는 phaseMetrics의 구간명 목록.
+   *
+   * 분석 서버는 구간 인터벌을 못 찾아도 그 구간에 속한 지표를 status:'unavailable'로 여전히
+   * 내려준다("측정 못함"도 값이다, 숨기지 않는다는 설계 원칙). 하지만 그 지표들은 phaseScores
+   * 기반으로 그려지는 구간 카드에 붙을 곳이 없어 화면에서 사라지므로, 이 배열로 그 사실을
+   * 별도 안내에 쓴다. 비어 있으면 안내를 그리지 않는다.
+   */
+  undetectedPhaseNames: string[];
 }

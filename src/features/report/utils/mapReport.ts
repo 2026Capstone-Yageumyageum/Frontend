@@ -168,6 +168,7 @@ export function buildReportData(
         releaseTiming: EMPTY_RELEASE_TIMING,
         releasePoint: EMPTY_RELEASE_POINT,
       },
+      undetectedPhaseNames: [],
     };
   }
 
@@ -182,6 +183,13 @@ export function buildReportData(
   detail.feedback?.bad?.forEach((f) => f.phase && badByPhase.set(f.phase, f.message));
 
   const metricsByPhase = groupMetricsByPhase(detail.phaseMetrics);
+
+  // 구간이 감지되지 않으면(phaseScores에 없음) 그 구간의 지표는 붙을 카드가 없다.
+  // 데이터를 지어내 카드를 만들지 않고, 대신 "이 구간들은 감지되지 못했다"고 별도로 알린다.
+  const scoredPhases = new Set(detail.phaseScores.map((p) => p.phase));
+  const undetectedPhaseNames = Array.from(metricsByPhase.keys())
+    .filter((phase) => !scoredPhases.has(phase))
+    .map((phase) => PHASE_KO[phase] ?? phase);
 
   const feedbacks: PhaseFeedback[] = detail.phaseScores.map((p) => {
     const score = round1(p.score);
@@ -262,5 +270,6 @@ export function buildReportData(
     hasDetail: true,
     feedbacks,
     insight: { phaseScores, releaseTiming, releasePoint },
+    undetectedPhaseNames,
   };
 }

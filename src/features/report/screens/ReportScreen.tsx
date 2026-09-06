@@ -271,6 +271,18 @@ export default function ReportScreen() {
           />
         ) : activeTab === 'timeline' ? (
           <View className="mt-2">
+            {/*
+              phaseScores에 없는(=감지 안 된) 구간에 딸린 지표는 붙을 카드가 없어 그냥 두면
+              화면에서 사라진다. 그 지표를 지어내 카드를 만드는 대신, 어떤 구간이 감지되지
+              못했는지 한 번에 알린다.
+            */}
+            {currentData.undetectedPhaseNames.length > 0 ? (
+              <ReportNotice
+                icon="body-outline"
+                title="일부 구간은 자세를 감지하지 못했어요"
+                description={`${currentData.undetectedPhaseNames.join(', ')} 구간은 이 영상에서 인식되지 않아 상세 지표 카드를 표시할 수 없어요.`}
+              />
+            ) : null}
             {currentData.feedbacks.map((feedback, index) => (
               <PhaseFeedback
                 key={index}
