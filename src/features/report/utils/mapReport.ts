@@ -9,6 +9,7 @@
 
 import {
   AnalysisResultResponse,
+  PhaseMetricDetail,
   PitchingComparison,
   PlayerDetail,
 } from '../../../api/analysisApi';
@@ -16,6 +17,7 @@ import {
   ComparePlayer,
   FeedbackMetric,
   PhaseFeedback,
+  PhaseMetric,
   PhaseScore,
   ReleasePoint,
   ReleaseTiming,
@@ -92,6 +94,29 @@ function splitMetric(message: string): { text: string; metric?: FeedbackMetric }
   return { text, metric };
 }
 
+/** 서버 지표를 구간(phase)별로 묶는다. 순서는 서버가 준 순서를 유지한다. */
+function groupMetricsByPhase(
+  metrics: PhaseMetricDetail[] | null | undefined,
+): Map<string, PhaseMetric[]> {
+  const grouped = new Map<string, PhaseMetric[]>();
+  (metrics ?? []).forEach((m) => {
+    const list = grouped.get(m.phase) ?? [];
+    list.push({
+      key: m.key,
+      label: m.label,
+      userValue: m.userValue,
+      proValue: m.proValue,
+      difference: m.difference,
+      threshold: m.threshold,
+      status: m.status,
+      why: m.why,
+      userFrame: m.userFrame,
+    });
+    grouped.set(m.phase, list);
+  });
+  return grouped;
+}
+
 function todayDot(): string {
   const d = new Date();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -156,6 +181,8 @@ export function buildReportData(
   });
   detail.feedback?.bad?.forEach((f) => f.phase && badByPhase.set(f.phase, f.message));
 
+  const metricsByPhase = groupMetricsByPhase(detail.phaseMetrics);
+
   const feedbacks: PhaseFeedback[] = detail.phaseScores.map((p) => {
     const score = round1(p.score);
     const name = phaseLabel(p);
@@ -201,6 +228,7 @@ export function buildReportData(
               : '선수와 자세 차이가 있어 개선이 필요합니다.',
       improvement: badParsed.text,
       improvementMetric: badParsed.metric,
+      metrics: metricsByPhase.get(p.phase) ?? [],
     };
   });
 

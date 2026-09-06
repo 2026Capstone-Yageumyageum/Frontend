@@ -4,6 +4,20 @@ export interface FeedbackMetric {
   proValue: number; // 선수
 }
 
+/** 화면에 그릴 구간 지표 한 줄 */
+export interface PhaseMetric {
+  key: string;
+  label: string;
+  userValue: number | null;
+  proValue: number | null;
+  difference: number | null;
+  threshold: number | null;
+  status: 'good' | 'warn' | 'favorable' | 'unavailable';
+  why: string | null;
+  /** "이 순간 보기"가 이동할 프레임. 없으면 버튼을 감춘다. */
+  userFrame: number | null;
+}
+
 export interface PhaseFeedback {
   phaseName: string; // e.g., "와인드업", "레그 리프트"
   score: number; // e.g., 76.9
@@ -13,6 +27,8 @@ export interface PhaseFeedback {
   feedback: string;
   improvement: string;
   improvementMetric?: FeedbackMetric; // 개선안에 딸린 측정값(있으면 그래프)
+  /** 이 구간의 상세 지표. 서버가 주지 않으면 빈 배열이며, 화면은 패널을 접은 채로도 열지 않는다. */
+  metrics: PhaseMetric[];
 }
 
 export interface ComparePlayer {

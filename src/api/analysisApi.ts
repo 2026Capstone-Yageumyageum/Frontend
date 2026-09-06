@@ -71,6 +71,25 @@ export interface FeedbackDetail {
   bad: FeedbackItemDetail[];
 }
 
+/** 구간별 상세 지표 (분석 서버 phaseMetrics 원본) */
+export interface PhaseMetricDetail {
+  phase: string;
+  key: string;
+  label: string;
+  /** body-frame 정규화 좌표. 단위가 없으므로 화면에서 단위를 붙이지 않는다. */
+  userValue: number | null;
+  proValue: number | null;
+  /** userValue - proValue. 부호를 유지한다(evidence.difference는 절댓값이라 다름). */
+  difference: number | null;
+  threshold: number | null;
+  status: 'good' | 'warn' | 'favorable' | 'unavailable';
+  favorableDirection: 'positive' | 'negative' | null;
+  why: string | null;
+  /** 측정이 일어난 프레임. "이 순간 보기"가 쓴다. */
+  userFrame: number | null;
+  proFrame: number | null;
+}
+
 /** detailJson을 파싱한 파이썬 player 원본 */
 export interface PlayerDetail {
   analysisId?: string;
@@ -79,6 +98,8 @@ export interface PlayerDetail {
   phaseScores: PhaseScoreDetail[];
   release?: ReleaseDetail | null;
   feedback?: FeedbackDetail | null;
+  /** 구버전 분석 서버는 보내지 않는다. 없으면 화면이 상세 패널을 그리지 않는다. */
+  phaseMetrics?: PhaseMetricDetail[] | null;
 }
 
 /** GET /result results[] 항목 */
