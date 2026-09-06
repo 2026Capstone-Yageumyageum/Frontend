@@ -1,11 +1,15 @@
-import React from 'react';
-import { View } from 'react-native';
+import React, { useState } from 'react';
+import { View, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import AppText from '../../../components/common/AppText';
 import { FeedbackMetric, PhaseFeedback as PhaseFeedbackType } from '../types/report.types';
+import PhaseMetricRow from './PhaseMetricRow';
 
 interface PhaseFeedbackProps {
   data: PhaseFeedbackType;
   reportType?: 'pro' | 'me';
+  /** 지표가 측정된 순간으로 이동. 리포트 화면이 내려준다. */
+  onSeekFrame?: (frame: number) => void;
 }
 
 /** 나 vs 비교대상 측정값 비교 막대 그래프(스켈레톤 색과 동일: 나=초록, 비교=보라). */
@@ -40,7 +44,8 @@ function MetricCompareBar({ metric, proLabel = '선수' }: { metric: FeedbackMet
   );
 }
 
-export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbackProps) {
+export default function PhaseFeedback({ data, reportType = 'pro', onSeekFrame }: PhaseFeedbackProps) {
+  const [metricsOpen, setMetricsOpen] = useState(false);
   const isGood = data.status === '양호';
   // 그래프 두 번째 막대 라벨: 최고의 1구 비교에선 '베스트'(좁은 칸 폭에 맞춰 축약)
   const proLabel = reportType === 'me' ? '베스트' : '선수';
@@ -101,6 +106,37 @@ export default function PhaseFeedback({ data, reportType = 'pro' }: PhaseFeedbac
         </AppText>
         {data.improvementMetric && <MetricCompareBar proLabel={proLabel} metric={data.improvementMetric} />}
       </View>
+
+      {/*
+        상세 지표는 기본으로 접어둔다. 구간마다 1~2개씩이라 항상 펼쳐두면
+        정성 피드백이 묻힌다. 서버가 지표를 주지 않으면 행 자체를 그리지 않는다.
+      */}
+      {data.metrics.length > 0 ? (
+        <View className="mt-4">
+          <TouchableOpacity
+            onPress={() => setMetricsOpen((open) => !open)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: metricsOpen }}
+            className="flex-row items-center justify-between border-t border-border pt-3"
+          >
+            <AppText weight="medium" className="text-text-secondary text-sm">
+              상세 지표 {data.metrics.length}개
+            </AppText>
+            <Ionicons
+              name={metricsOpen ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color="#8E949A"
+            />
+          </TouchableOpacity>
+
+          {metricsOpen
+            ? data.metrics.map((metric) => (
+                <PhaseMetricRow key={metric.key} metric={metric} onSeekFrame={onSeekFrame} />
+              ))
+            : null}
+        </View>
+      ) : null}
     </View>
   );
 }
