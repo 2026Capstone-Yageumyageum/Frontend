@@ -42,11 +42,19 @@ export interface PastVideo {
 interface PastVideoSelectionSheetProps {
   onClose: () => void;
   onNext: (selectedVideo: PastVideo) => void;
+  /**
+   * 등록된 최고의 1구가 하나도 없을 때 "프로 비교로 먼저 분석하기"를 누른 경우.
+   *
+   * 이 길이 없으면 신규 사용자는 이 시트에서 빠져나갈 수 없습니다.
+   * 비교할 대상이 없으니 "다음"은 눌러도 아무 일이 없고, 닫아도 같은 상태로 돌아옵니다.
+   */
+  onSwitchToPro?: () => void;
 }
 
 export default function PastVideoSelectionSheet({
   onClose,
   onNext,
+  onSwitchToPro,
 }: PastVideoSelectionSheetProps) {
   const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   // 구종별 "최고의 1구"를 서버에서 받아 비교 대상 후보로 보여준다.
@@ -138,11 +146,16 @@ export default function PastVideoSelectionSheet({
           <Ionicons name="close" size={24} color="#8E949A" />
         </TouchableOpacity>
 
+        {/*
+          제목이 "과거 영상 선택"이었는데, 실제로 고르는 것은 구종별 최고의 1구입니다.
+          구종당 하나뿐이므로 여기서 고르는 행위가 곧 "어느 구종과 비교할지"를 정하는 것이고,
+          촬영 후 구종을 다시 묻지 않는 이유이기도 합니다.
+        */}
         <Text className="text-text-primary text-xl font-bold mb-1">
-          과거 영상 선택
+          비교할 구종 선택
         </Text>
         <Text className="text-text-secondary text-sm mb-5">
-          비교할 내 베스트 투구를 선택해주세요
+          어느 구종의 최고의 1구와 비교할까요?
         </Text>
 
         <ScrollView showsVerticalScrollIndicator={false} className="mb-4">
@@ -152,10 +165,62 @@ export default function PastVideoSelectionSheet({
             </View>
           )}
           {!loading && pastVideos.length === 0 && (
-            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-              <Text style={{ color: '#8E949A', fontSize: 13, textAlign: 'center' }}>
-                {error ?? '등록된 최고의 1구가 없어요.\n먼저 투구를 분석하고 최고의 1구로 등록해보세요.'}
-              </Text>
+            <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+              {error ? (
+                <Text style={{ color: '#8E949A', fontSize: 13, textAlign: 'center' }}>
+                  {error}
+                </Text>
+              ) : (
+                <>
+                  <Ionicons name="baseball-outline" size={36} color="#C4C9CF" />
+                  <Text
+                    style={{
+                      color: '#1A1C20',
+                      fontSize: 15,
+                      fontWeight: '700',
+                      marginTop: 12,
+                      textAlign: 'center',
+                    }}
+                  >
+                    아직 비교할 분석 기록이 없어요
+                  </Text>
+                  <Text
+                    style={{
+                      color: '#8E949A',
+                      fontSize: 13,
+                      lineHeight: 19,
+                      marginTop: 6,
+                      textAlign: 'center',
+                    }}
+                  >
+                    투구를 분석하고 &apos;최고의 1구&apos;로 등록하면{'\n'}
+                    그때부터 폼을 비교할 수 있어요.
+                  </Text>
+
+                  {/*
+                    막다른 길을 만들지 않기 위한 출구.
+                    비교할 대상이 없으면 이 모드에서는 할 수 있는 일이 없으므로,
+                    지금 할 수 있는 일(프로 비교로 분석하기)로 데려다준다.
+                  */}
+                  {onSwitchToPro ? (
+                    <TouchableOpacity
+                      onPress={onSwitchToPro}
+                      activeOpacity={0.85}
+                      style={{
+                        marginTop: 20,
+                        backgroundColor: '#3BC1A8',
+                        borderRadius: 14,
+                        paddingVertical: 13,
+                        paddingHorizontal: 22,
+                      }}
+                    >
+                      <Text style={{ color: 'white', fontSize: 14, fontWeight: '700' }}>
+                        프로 비교로 먼저 분석하기
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              )}
             </View>
           )}
           {pastVideos.map((video) => {
@@ -217,6 +282,12 @@ export default function PastVideoSelectionSheet({
           })}
         </ScrollView>
 
+        {/*
+          고를 대상이 하나도 없으면 "다음"은 눌러도 아무 일이 없다(handleNext가 그냥 반환).
+          동작하지 않는 버튼을 남겨두면 사용자가 그걸 누르며 헤매게 되므로 아예 감춘다.
+          이때의 출구는 위 빈 상태의 "프로 비교로 먼저 분석하기"다.
+        */}
+        {!loading && pastVideos.length === 0 ? null : (
         <TouchableOpacity
           onPress={handleNext}
           activeOpacity={0.85}
@@ -236,6 +307,7 @@ export default function PastVideoSelectionSheet({
           </Text>
           <Ionicons name="chevron-forward" size={16} color="white" />
         </TouchableOpacity>
+        )}
       </Animated.View>
     </View>
   );

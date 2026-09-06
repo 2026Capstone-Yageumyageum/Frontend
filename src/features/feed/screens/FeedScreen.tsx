@@ -8,15 +8,8 @@
  *  - 기록을 터치하면 리포트(내 폼 vs 최고의 1구 폼)로 진입한다.
  */
 
-import React, { useCallback, useState } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  ListRenderItem,
-  ActivityIndicator,
-  TouchableOpacity,
-} from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, FlatList, ListRenderItem, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -25,6 +18,8 @@ import SegmentedToggle from '../components/SegmentedToggle';
 import FilterChipList from '../components/FilterChipList';
 import ProMatchingCard from '../components/ProMatchingCard';
 import ConsistencyCard from '../components/ConsistencyCard';
+import ComparisonRecordCard from '../components/ComparisonRecordCard';
+import AppText from '../../../components/common/AppText';
 import { useFeedFilter } from '../hooks/useFeedFilter';
 import { ProFeedItem, ConsistencyFeedItem, PitchType } from '../types/feed.types';
 import {
@@ -34,6 +29,7 @@ import {
   BestPitchCard,
   BestPitchComparisonItem,
 } from '../../../api/userApi';
+import { getErrorMessage } from '../../../api/apiError';
 
 const TAB_LABELS = { pro: '프로 선수', consistency: '일관성' };
 const TABS = [TAB_LABELS.pro, TAB_LABELS.consistency];
@@ -48,9 +44,7 @@ function toConsistencyItem(card: BestPitchCard): ConsistencyFeedItem {
     bestConsistency: card.bestConsistency,
     sessionCount: card.sessionCount,
     avgConsistency: card.avgConsistency,
-    duration: '',
     isBest: true,
-    thumbnailUri: undefined,
   };
 }
 
@@ -64,63 +58,73 @@ export default function FeedScreen() {
   // ── 프로 탭 상태 ──
   const [proItems, setProItems] = useState<ProFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 예외 객체를 그대로 보관하고, 화면에 뿌릴 때 getErrorMessage로 사용자용 문구만 꺼낸다.
+  const [error, setError] = useState<unknown>(null);
 
   // ── 일관성 탭 상태 ──
   const [bestCards, setBestCards] = useState<BestPitchCard[]>([]);
   const [bestLoading, setBestLoading] = useState(true);
-  const [bestError, setBestError] = useState<string | null>(null);
+  const [bestError, setBestError] = useState<unknown>(null);
   // 현재 펼쳐진 카드의 구종(한 번에 하나만 펼침). null이면 모두 접힘.
   const [expandedPitch, setExpandedPitch] = useState<string | null>(null);
   // 구종별 비교 기록 캐시 + 로딩 상태
   const [comparisons, setComparisons] = useState<Record<string, BestPitchComparisonItem[]>>({});
   const [comparisonLoading, setComparisonLoading] = useState<Record<string, boolean>>({});
 
+  /**
+   * 목록 두 개(프로 비교 / 최고의 1구)를 불러온다.
+   * 화면 포커스와 '다시 시도' 버튼이 같은 함수를 쓰므로, 재조회 경로가 하나로 유지된다.
+   *
+   * requestIdRef: 응답이 도착했을 때 이미 더 최신 요청이 시작됐다면 그 결과는 버린다.
+   * (탭을 빠르게 오가거나 재시도를 연타할 때 오래된 응답이 새 데이터를 덮는 것을 막는다.)
+   */
+  const requestIdRef = useRef(0);
+
+  const loadFeed = useCallback(() => {
+    const requestId = ++requestIdRef.current;
+    const isStale = () => requestId !== requestIdRef.current;
+
+    setLoading(true);
+    setError(null);
+    getMyAnalyses()
+      .then((items) => {
+        if (isStale()) return;
+        setProItems(
+          items.map((it) => ({
+            id: String(it.videoId),
+            date: it.date,
+            playerName: it.playerName,
+            pitchType: it.pitchType as PitchType,
+            similarity: it.similarity,
+          })),
+        );
+      })
+      .catch((e) => {
+        if (!isStale()) setError(e);
+      })
+      .finally(() => {
+        if (!isStale()) setLoading(false);
+      });
+
+    setBestLoading(true);
+    setBestError(null);
+    getBestPitches()
+      .then((cards) => {
+        if (!isStale()) setBestCards(cards);
+      })
+      .catch((e) => {
+        if (!isStale()) setBestError(e);
+      })
+      .finally(() => {
+        if (!isStale()) setBestLoading(false);
+      });
+  }, []);
+
   // 화면 포커스 시 프로 목록 + 최고의 1구 목록 갱신
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      setLoading(true);
-      setError(null);
-      getMyAnalyses()
-        .then((items) => {
-          if (!active) return;
-          setProItems(
-            items.map((it) => ({
-              id: String(it.videoId),
-              date: it.date,
-              playerName: it.playerName,
-              pitchType: it.pitchType as PitchType,
-              similarity: it.similarity,
-              duration: '',
-              thumbnailUri: undefined,
-            })),
-          );
-        })
-        .catch((e) => {
-          if (active) setError(e instanceof Error ? e.message : '목록을 불러오지 못했습니다.');
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-
-      setBestLoading(true);
-      setBestError(null);
-      getBestPitches()
-        .then((cards) => {
-          if (active) setBestCards(cards);
-        })
-        .catch((e) => {
-          if (active) setBestError(e instanceof Error ? e.message : '목록을 불러오지 못했습니다.');
-        })
-        .finally(() => {
-          if (active) setBestLoading(false);
-        });
-
-      return () => {
-        active = false;
-      };
-    }, []),
+      loadFeed();
+    }, [loadFeed]),
   );
 
   const isProTab = activeTab === 'pro';
@@ -152,9 +156,9 @@ export default function FeedScreen() {
   const ProListHeader = (
     <View>
       <View className="px-2 pt-5 pb-2">
-        <Text className="text-text-primary text-xl font-semibold">
+        <AppText weight="semibold" className="text-text-primary text-xl">
           나의 투구 기록 {filteredPro.length}
-        </Text>
+        </AppText>
       </View>
       <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
         <FilterChipList
@@ -169,12 +173,12 @@ export default function FeedScreen() {
   const BestListHeader = (
     <View>
       <View className="px-2 pt-5 pb-2">
-        <Text className="text-text-primary text-xl font-semibold">
+        <AppText weight="semibold" className="text-text-primary text-xl">
           구종별 최고의 1구 {filteredBest.length}
-        </Text>
-        <Text className="text-text-secondary text-xs mt-1">
+        </AppText>
+        <AppText className="text-text-secondary text-xs mt-1">
           카드를 누르면 최고의 1구와 비교한 기록을 볼 수 있어요.
-        </Text>
+        </AppText>
       </View>
       <View style={{ marginHorizontal: -20, marginBottom: 12 }}>
         <FilterChipList
@@ -186,21 +190,44 @@ export default function FeedScreen() {
     </View>
   );
 
-  const ProEmpty = (
+  /**
+   * 목록이 비었을 때 보여줄 영역.
+   *
+   * "조회 실패"와 "기록이 없음"은 사용자가 해야 할 일이 다르므로 분리한다.
+   * 실패했을 때는 백엔드가 내려준 message를 그대로 쓰고, 다시 시도할 길을 준다.
+   */
+  const renderEmpty = (failure: unknown, emptyMessage: string) => (
     <View className="flex-1 items-center justify-center py-16 px-8">
-      <Text className="text-text-secondary text-sm text-center">
-        {error ?? '아직 분석 기록이 없어요.\n카메라 탭에서 투구를 촬영해보세요.'}
-      </Text>
+      <Ionicons
+        name={failure ? 'cloud-offline-outline' : 'baseball-outline'}
+        size={36}
+        color="#C4C9CF"
+      />
+      <AppText className="text-text-secondary text-sm text-center mt-4">
+        {failure ? getErrorMessage(failure) : emptyMessage}
+      </AppText>
+      {failure ? (
+        <TouchableOpacity
+          onPress={loadFeed}
+          activeOpacity={0.8}
+          className="mt-5 px-6 py-2.5 rounded-full bg-brand"
+        >
+          <AppText weight="bold" className="text-white text-sm">
+            다시 시도
+          </AppText>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 
-  const BestEmpty = (
-    <View className="flex-1 items-center justify-center py-16 px-8">
-      <Text className="text-text-secondary text-sm text-center">
-        {bestError ??
-          '등록된 최고의 1구가 없어요.\n투구를 분석한 뒤 "최고의 1구"로 등록해보세요.'}
-      </Text>
-    </View>
+  const ProEmpty = renderEmpty(
+    error,
+    '아직 분석 기록이 없어요.\n카메라 탭에서 투구를 촬영해보세요.',
+  );
+
+  const BestEmpty = renderEmpty(
+    bestError,
+    '등록된 최고의 1구가 없어요.\n투구를 분석한 뒤 "최고의 1구"로 등록해보세요.',
   );
 
   const renderProItem: ListRenderItem<ProFeedItem> = ({ item }) => (
@@ -213,61 +240,60 @@ export default function FeedScreen() {
     />
   );
 
-  // 일관성 카드 + (펼쳐졌으면) 비교 기록 목록
+  // 일관성 카드 + (펼쳐졌으면) 비교 기록 카드 목록
   const renderBestItem: ListRenderItem<BestPitchCard> = ({ item }) => {
     const expanded = expandedPitch === item.pitchType;
-    const rows = comparisons[item.pitchType] ?? [];
-    const rowsLoading = comparisonLoading[item.pitchType];
+    const records = comparisons[item.pitchType] ?? [];
+    const recordsLoading = comparisonLoading[item.pitchType];
     return (
       <View>
-        <ConsistencyCard item={toConsistencyItem(item)} onPress={() => toggleExpand(item.pitchType)} />
+        <ConsistencyCard
+          item={toConsistencyItem(item)}
+          expanded={expanded}
+          onPress={() => toggleExpand(item.pitchType)}
+        />
         {expanded && (
-          <View className="bg-surface rounded-card -mt-2 mb-4 px-4 pt-3 pb-2 border-t border-border">
-            <Text className="text-text-secondary text-xs mb-2">
-              최고의 1구와 비교한 기록
-            </Text>
-            {rowsLoading ? (
+          <View className="-mt-2 mb-4 px-1">
+            <AppText weight="medium" className="text-text-secondary text-xs mb-2.5 px-1">
+              최고의 1구와 비교한 기록 {records.length > 0 ? records.length : ''}
+            </AppText>
+            {recordsLoading ? (
               <View className="py-6 items-center">
                 <ActivityIndicator size="small" color="#3BC1A8" />
               </View>
-            ) : rows.length === 0 ? (
-              <Text className="text-text-secondary text-xs py-4 text-center">
-                아직 이 최고의 1구와 비교한 기록이 없어요.{'\n'}
-                카메라 "내 베스트 투구" 모드에서 비교해보세요.
-              </Text>
+            ) : records.length === 0 ? (
+              <View className="py-4">
+                <AppText className="text-text-secondary text-xs text-center">
+                  아직 이 최고의 1구와 비교한 기록이 없어요.
+                </AppText>
+                <AppText className="text-text-secondary text-xs text-center mt-1">
+                  카메라 &quot;내 베스트 투구&quot; 모드에서 비교해보세요.
+                </AppText>
+              </View>
             ) : (
-              rows.map((row) => {
-                const good = row.consistency >= 70;
-                return (
-                  <TouchableOpacity
-                    key={row.videoId}
-                    activeOpacity={0.7}
-                    onPress={() => {
-                      // @ts-ignore - Report 화면은 RootStack에 정의됨.
-                      navigation.navigate('Report', {
-                        videoId: row.videoId,
-                        reportType: 'me',
-                        bestPitchVideoId: row.bestPitchVideoId,
-                      });
-                    }}
-                    className="flex-row items-center justify-between py-3 border-b border-border/50"
-                  >
-                    <View className="flex-row items-center">
-                      <Ionicons name="videocam-outline" size={16} color="#8E949A" />
-                      <Text className="text-text-primary text-sm ml-2">{row.date}</Text>
-                    </View>
-                    <View className="flex-row items-center">
-                      <Text
-                        className="text-base font-bold mr-1"
-                        style={{ color: good ? '#3BC1A8' : '#DCA876' }}
-                      >
-                        {row.consistency}%
-                      </Text>
-                      <Ionicons name="chevron-forward" size={14} color="#8E949A" />
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
+              records.map((record, index) => (
+                <ComparisonRecordCard
+                  key={record.videoId}
+                  date={record.date}
+                  pitchType={record.pitchType as PitchType}
+                  consistency={record.consistency}
+                  // 목록은 최신순이므로 "직전 기록"은 한 칸 뒤(더 오래된 것)에 있다.
+                  // 가장 오래된 기록에는 비교 대상이 없어 증감을 표시하지 않는다.
+                  delta={
+                    index + 1 < records.length
+                      ? record.consistency - records[index + 1].consistency
+                      : undefined
+                  }
+                  onPress={() => {
+                    // @ts-ignore - Report 화면은 RootStack에 정의됨.
+                    navigation.navigate('Report', {
+                      videoId: record.videoId,
+                      reportType: 'me',
+                      bestPitchVideoId: record.bestPitchVideoId,
+                    });
+                  }}
+                />
+              ))
             )}
           </View>
         )}

@@ -245,11 +245,14 @@ export default function CameraScreen() {
     else if (flowState === 'RECORDING') handleStopRecording();
   }, [flowState, cameraMode, selectedPastVideo, handleStartRecording, handleStopRecording]);
 
-  /** 과거 영상 선택 다음 버튼 (Flow B) */
-  const handlePastVideoNext = useCallback((video: PastVideo) => {
-    setSelectedPastVideo(video);
-    setFlowState('IDLE');
-  }, []);
+  /**
+   * 앨범 버튼을 눌렀지만 비교 대상이 없어 대상 선택 시트를 먼저 띄운 경우를 기억한다.
+   * 대상을 고르고 나면 사용자가 원래 하려던 일(갤러리 열기)로 이어준다.
+   *
+   * state가 아니라 ref인 이유: 이 값은 렌더 결과에 영향을 주지 않고
+   * "다음 단계에서 무엇을 할지"만 기억하면 되기 때문이다.
+   */
+  const resumeGalleryAfterSelectRef = useRef(false);
 
   /** 재촬영: IDLE 리셋 */
   const handleRetake = useCallback(() => {
@@ -351,9 +354,8 @@ export default function CameraScreen() {
   /** 프리뷰 "편집" 버튼 → 영상 편집 화면으로 이동 */
   const handleEditPress = useCallback(() => setFlowState('EDITING'), []);
 
-  /** 프리뷰 "다음" → 구종 선택
-   *  (편집 없이도 다음으로 진행 가능, 편집을 먼저 해도 여기서 다음을 눌러야 함) */
-  const handlePreviewNext = useCallback(() => setFlowState('PITCH_SELECTION'), []);
+  // 프리뷰 "다음" 핸들러(handlePreviewNext)는 handleSuccess 아래에 정의한다.
+  // '내 베스트 투구' 모드에서는 곧바로 분석으로 넘어가야 해서 handleSuccess를 참조하기 때문이다.
 
   /** 구종 선택 "다음" → 바로 최고의 1구 등록 (SUCCESS)
    *  편집은 PREVIEW 단계에서 선택적으로 먼저 수행하므로, 여기서는 바로 SUCCESS로 */
@@ -473,11 +475,22 @@ export default function CameraScreen() {
     const isMyMode = cameraMode === 'my';
     const bestPitchVideoId =
       isMyMode && selectedPastVideo ? Number(selectedPastVideo.id) : undefined;
+    /*
+     * 구종은 모드에 따라 출처가 다르다.
+     *  - 프로 비교: 촬영 후 구종 선택 시트에서 고른 값
+     *  - 내 베스트 투구: 비교 대상(최고의 1구)의 구종. 구종당 최고의 1구는 하나뿐이므로
+     *    대상을 고른 순간 구종도 정해진다. 여기서 다시 물으면 "커브 영상을 직구
+     *    최고의 1구와 비교" 같은 모순이 생길 수 있어 대상에서 그대로 가져온다.
+     */
+    const pitchType = isMyMode && selectedPastVideo
+      ? selectedPastVideo.pitchType
+      : (selectedPitch ?? '직구');
+
     handleRetake();
     // @ts-ignore - AnalysisLoading 스크린이 Root 스택에 정의되어 있음
     navigation.navigate('AnalysisLoading', {
       videoUri: uri,
-      pitchType: selectedPitch ?? '직구',
+      pitchType,
       // 사용자가 트리머로 자른 구간만 분석하도록 전달
       trimStartSec: startSec,
       trimEndSec: endSec,
@@ -491,6 +504,26 @@ export default function CameraScreen() {
   }, [recordedVideo, handleRetake, navigation, cameraMode, selectedPitch, selectedPastVideo]);
 
   /**
+   * 프리뷰 "다음".
+   *
+   * 프로 비교: 구종 선택 → 최고의 1구 등록 시트 → 분석 (기존 그대로)
+   * 내 베스트 투구: 두 시트를 건너뛰고 바로 분석
+   *
+   * 건너뛰는 이유:
+   *  - 구종은 비교 대상을 고를 때 이미 정해졌다. 다시 물으면 어긋날 수 있다.
+   *  - 등록 시트는 "이 영상을 최고의 1구로 등록할까요?"인데, 지금은 기준과 비교하러 온
+   *    참이다. 그 자리에서 기준을 갈아치우면 방금 만든 비교 기록이 이전 기준을 가리킨 채
+   *    남아 목록에서 사라진다.
+   */
+  const handlePreviewNext = useCallback(() => {
+    if (cameraMode === 'my') {
+      handleSuccess(false); // 최고의 1구로 등록하지 않고 비교만 한다
+      return;
+    }
+    setFlowState('PITCH_SELECTION');
+  }, [cameraMode, handleSuccess]);
+
+  /**
    * 갤러리에서 영상 선택 후 프리뷰 플로우로 진입
    *
    * 처리 흐름:
@@ -502,7 +535,7 @@ export default function CameraScreen() {
    * ⚠️ expo-image-picker는 duration을 밀리초(ms) 단위로 반환함
    *    → recordedVideo.duration은 초(sec) 단위이므로 /1000 변환 필요
    */
-  const handlePickVideoFromGallery = useCallback(async () => {
+  const openGalleryPicker = useCallback(async () => {
     // 갤러리 피커 열기 전 상태 전환 (뷰파인더 유지하면서 로딩 표시)
     setFlowState('GALLERY_PICKING');
 
@@ -556,6 +589,55 @@ export default function CameraScreen() {
       Alert.alert('오류', '영상을 불러오는 중 오류가 발생했습니다.');
       setFlowState('IDLE');
     }
+  }, []);
+
+  /**
+   * 앨범 버튼 핸들러 = 가드 + 갤러리 열기.
+   *
+   * '내 베스트 투구' 모드인데 비교 대상을 아직 고르지 않았다면 갤러리를 열지 않는다.
+   * 녹화 버튼에는 이 검사가 있었지만 앨범 버튼에는 없어서, 대상 없이 분석까지
+   * 진행되는 경로가 열려 있었다. 그 경우 분석 요청이 조용히 프로 비교로 넘어가
+   * "일관성"이라고 표시된 프로 리포트가 만들어졌다.
+   *
+   * 막기만 하지 않고 빠진 단계로 안내한다. 대상을 고르면 갤러리가 이어서 열린다.
+   */
+  const handlePickVideoFromGallery = useCallback(() => {
+    if (cameraMode === 'my' && selectedPastVideo === null) {
+      resumeGalleryAfterSelectRef.current = true;
+      setFlowState('SELECTING_PITCH');
+      return;
+    }
+    void openGalleryPicker();
+  }, [cameraMode, selectedPastVideo, openGalleryPicker]);
+
+  /**
+   * 비교 대상(구종별 최고의 1구) 선택 완료.
+   *
+   * 앨범 버튼 때문에 이 시트가 열렸다면 대상을 고른 뒤 갤러리를 이어서 연다.
+   * 사용자는 "갤러리에서 영상 넣기"를 하려던 것이므로 그 의도를 끊지 않는다.
+   *
+   * 가드가 붙은 handlePickVideoFromGallery가 아니라 openGalleryPicker를 부르는 것이 중요하다.
+   * setSelectedPastVideo는 다음 렌더에 반영되므로, 지금 가드를 다시 태우면
+   * 방금 고른 값을 보지 못해 시트가 다시 열리는 루프가 된다.
+   */
+  const handlePastVideoNext = useCallback(
+    (video: PastVideo) => {
+      setSelectedPastVideo(video);
+      if (resumeGalleryAfterSelectRef.current) {
+        resumeGalleryAfterSelectRef.current = false;
+        void openGalleryPicker();
+        return;
+      }
+      setFlowState('IDLE');
+    },
+    [openGalleryPicker],
+  );
+
+  /** 비교 대상이 하나도 없을 때: 프로 비교 모드로 되돌려 준다. */
+  const handleSwitchToProMode = useCallback(() => {
+    resumeGalleryAfterSelectRef.current = false;
+    setCameraMode('pro');
+    setFlowState('IDLE');
   }, []);
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -712,11 +794,16 @@ export default function CameraScreen() {
             </View>
           </SafeAreaView>
 
-          {/* ── 과거 영상 선택 바텀시트 (Flow B) ── */}
+          {/* ── 비교할 구종(최고의 1구) 선택 바텀시트 (Flow B) ── */}
           {flowState === 'SELECTING_PITCH' && (
             <PastVideoSelectionSheet
-              onClose={() => setFlowState('IDLE')}
+              onClose={() => {
+                // 앨범을 누르며 열린 시트를 그냥 닫았다면, 갤러리를 이어서 열지 않는다.
+                resumeGalleryAfterSelectRef.current = false;
+                setFlowState('IDLE');
+              }}
               onNext={handlePastVideoNext}
+              onSwitchToPro={handleSwitchToProMode}
             />
           )}
 
