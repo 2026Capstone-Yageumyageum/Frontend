@@ -16,7 +16,6 @@ export async function saveTokens(accessToken: string, refreshToken: string) {
   try {
     await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
     await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
-    console.log('[TokenStore] 토큰 저장 완료');
   } catch (error) {
     console.error('[TokenStore] 토큰 저장 실패:', error);
   }
@@ -43,7 +42,6 @@ export async function clearTokens() {
   try {
     await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
-    console.log('[TokenStore] 토큰 삭제 완료');
   } catch (error) {
     console.error('[TokenStore] 토큰 삭제 실패:', error);
   }

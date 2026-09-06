@@ -3,7 +3,8 @@
  * 백엔드 분석 결과(AnalysisResultResponse)를 리포트 화면이 쓰는 형태(ReportData/ComparePlayer)로 변환합니다.
  *
  * 백엔드는 파이썬 player 원본(detailJson)을 그대로 내려주므로, 여기서 한글 라벨/상태/피드백 문구로 가공합니다.
- * detail이 없으면(=상세 미수신/파싱 실패) mock 상세로 폴백하되 점수·선수명 같은 실데이터는 유지합니다.
+ * detail이 없으면(=상세 미수신/파싱 실패) hasDetail=false인 빈 리포트를 돌려줍니다.
+ * 화면이 "상세를 불러오지 못했다"고 알릴 수 있게 하려는 것으로, 없는 데이터를 지어내지 않습니다.
  */
 
 import {
@@ -20,7 +21,6 @@ import {
   ReleaseTiming,
   ReportData,
 } from '../types/report.types';
-import { MOCK_REPORT_DATA } from '../data/report.mockdata';
 
 /** 파이썬 phase 코드 → 한글 라벨 (label이 비어있을 때의 폴백) */
 const PHASE_KO: Record<string, string> = {
@@ -29,6 +29,24 @@ const PHASE_KO: Record<string, string> = {
   stride: '스트라이드',
   acceleration: '가속',
   follow_through: '팔로스루',
+};
+
+/** 구종을 못 받았을 때의 표기. 백엔드 DEFAULT_PITCH_TYPE과 맞춘다. */
+const DEFAULT_PITCH_TYPE = '직구';
+
+/** 상세를 못 받았을 때 채워 넣는 빈 릴리즈 정보. 화면은 hasDetail로 걸러내므로 표시되지 않는다. */
+const EMPTY_RELEASE_TIMING: ReleaseTiming = {
+  myTiming: 0,
+  proTiming: 0,
+  diff: 0,
+  feedback: '릴리즈 타이밍 정보를 계산하지 못했습니다.',
+};
+
+const EMPTY_RELEASE_POINT: ReleasePoint = {
+  totalDiff: 0,
+  heightDiff: 0,
+  widthDiff: 0,
+  feedback: '릴리즈 포인트 정보를 계산하지 못했습니다.',
 };
 
 const round1 = (n: number | null | undefined): number =>
@@ -109,15 +127,22 @@ export function buildReportData(
   );
   const detail: PlayerDetail | null | undefined = match?.detail;
 
-  // 상세 데이터가 없으면 mock 상세로 폴백 (점수/선수는 실데이터 유지)
+  // 상세 데이터가 없으면 비어 있다는 사실을 그대로 전달한다.
+  // 유사도·선수명은 실데이터이므로 유지하고, 지어낼 수 있는 구간 피드백은 만들지 않는다.
   if (!detail || !detail.phaseScores?.length) {
     return {
-      ...MOCK_REPORT_DATA,
       id: `report-${result.videoId}`,
       date: todayDot(),
-      pitchType: match?.pitchType ?? MOCK_REPORT_DATA.pitchType,
+      pitchType: match?.pitchType ?? DEFAULT_PITCH_TYPE,
       overallSimilarity: player.similarity,
       comparePlayer: player,
+      hasDetail: false,
+      feedbacks: [],
+      insight: {
+        phaseScores: [],
+        releaseTiming: EMPTY_RELEASE_TIMING,
+        releasePoint: EMPTY_RELEASE_POINT,
+      },
     };
   }
 
@@ -203,9 +228,10 @@ export function buildReportData(
   return {
     id: `report-${result.videoId}`,
     date: todayDot(),
-    pitchType: match?.pitchType ?? '직구',
+    pitchType: match?.pitchType ?? DEFAULT_PITCH_TYPE,
     overallSimilarity: player.similarity,
     comparePlayer: player,
+    hasDetail: true,
     feedbacks,
     insight: { phaseScores, releaseTiming, releasePoint },
   };

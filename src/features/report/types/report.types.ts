@@ -54,6 +54,14 @@ export interface ReportData {
   isBestPitch?: boolean;
   overallSimilarity: number;
   comparePlayer: ComparePlayer;
+  /**
+   * 구간별 상세(phaseScores/feedback/release)를 받았는지 여부.
+   *
+   * 백엔드는 분석이 끝나도 detailJson이 비어 있을 수 있고, 그때도 200 OK로 응답한다.
+   * 이 플래그가 false면 화면은 빈 카드를 그리는 대신 "상세를 불러오지 못했다"고 알린다.
+   * (예전에는 이 경우 mock 상세로 채워서, 실제 점수 옆에 가짜 피드백이 붙어 나갔다.)
+   */
+  hasDetail: boolean;
   feedbacks: PhaseFeedback[];
   insight: InsightData;
 }

@@ -7,6 +7,8 @@
  * - API 엔드포인트나 DTO가 바뀌어도 이 파일만 수정하면 됩니다.
  */
 
+import { toApiError, toNetworkError } from './apiError';
+
 // ─────────────────────────────────────────────
 //  상수 정의
 // ─────────────────────────────────────────────
@@ -58,16 +60,17 @@ async function fetchWithTimeout(resource: string, options: RequestInit = {}) {
   try {
     const response = await fetch(resource, {
       ...options,
-      signal: controller.signal
+      signal: controller.signal,
     });
-    clearTimeout(id);
     return response;
   } catch (error) {
+    // 타임아웃(AbortError)과 연결 실패를 모두 ApiError로 바꾼다.
+    // 요청 URL이 담긴 원본 메시지는 화면에 노출하지 않는다(내부 주소 유출).
+    throw toNetworkError(error);
+  } finally {
+    // 성공/실패와 무관하게 타이머를 정리해야 한다. 예전 코드는 두 갈래에 나눠 적혀 있어
+    // 새 return 경로가 생기면 누락되기 쉬웠다.
     clearTimeout(id);
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`[API 타임아웃] 서버가 응답하지 않습니다. IP 주소나 서버 상태를 확인하세요. (요청 URL: ${resource})`);
-    }
-    throw error;
   }
 }
 
@@ -88,10 +91,7 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
   });
 
   // HTTP 에러 처리 (4xx, 5xx)
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[Google 로그인 API 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<AuthResponse>;
 }
@@ -105,7 +105,7 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResponse> {
  * @returns AuthResponse - accessToken, refreshToken 포함
  */
 export async function signupWithNickname(email: string, nickname: string): Promise<AuthResponse> {
-  const response = await fetch(`${BASE_URL}/api/auth/signup`, {
+  const response = await fetchWithTimeout(`${BASE_URL}/api/auth/signup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -113,10 +113,7 @@ export async function signupWithNickname(email: string, nickname: string): Promi
     body: JSON.stringify({ email, nickname }),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[닉네임 등록 API 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<AuthResponse>;
 }
@@ -128,8 +125,20 @@ export async function signupWithNickname(email: string, nickname: string): Promi
  * @param refreshToken - 로컬에 저장된 Refresh Token
  * @returns TokenResponse - 새로운 accessToken, refreshToken
  */
-export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
-  const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+/**
+ * 로그아웃: 서버에 저장된 리프레시 토큰을 폐기합니다.
+ * POST /api/auth/logout
+ *
+ * 왜 서버에도 알려야 하나요?
+ * 앱에서 토큰을 지우는 것만으로는 서버가 그 토큰을 계속 유효하다고 봅니다.
+ * 값을 가진 누구든 갱신을 이어갈 수 있고, 갱신할 때마다 기한이 연장됩니다.
+ *
+ * 서버는 이미 없는 토큰이어도 200으로 응답합니다(멱등).
+ *
+ * @param refreshToken 로컬에 저장돼 있던 Refresh Token
+ */
+export async function logout(refreshToken: string): Promise<void> {
+  const response = await fetchWithTimeout(`${BASE_URL}/api/auth/logout`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -137,10 +146,19 @@ export async function refreshAccessToken(refreshToken: string): Promise<TokenRes
     body: JSON.stringify({ refreshToken }),
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[토큰 재발급 API 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
+}
+
+export async function refreshAccessToken(refreshToken: string): Promise<TokenResponse> {
+  const response = await fetchWithTimeout(`${BASE_URL}/api/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<TokenResponse>;
 }

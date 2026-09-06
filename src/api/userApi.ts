@@ -5,6 +5,7 @@
  */
 
 import { authFetch } from './analysisApi';
+import { toApiError } from './apiError';
 
 // ─── 백엔드 DTO와 1:1 타입 ───────────────────────────────
 export interface UserProfile {
@@ -45,19 +46,19 @@ export interface MyAnalysisItem {
 // ─── API ─────────────────────────────────────────────────
 export async function getMyProfile(): Promise<UserProfile> {
   const res = await authFetch('/api/users/me', { method: 'GET' });
-  if (!res.ok) throw new Error(`[프로필 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<UserProfile>;
 }
 
 export async function getMyStats(): Promise<UserStats> {
   const res = await authFetch('/api/users/me/stats', { method: 'GET' });
-  if (!res.ok) throw new Error(`[통계 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<UserStats>;
 }
 
 export async function getMyAnalyses(): Promise<MyAnalysisItem[]> {
   const res = await authFetch('/api/users/me/analyses', { method: 'GET' });
-  if (!res.ok) throw new Error(`[분석목록 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<MyAnalysisItem[]>;
 }
 
@@ -68,14 +69,14 @@ export interface ProSummary {
 }
 export async function getComparedPros(): Promise<ProSummary[]> {
   const res = await authFetch('/api/users/me/pros', { method: 'GET' });
-  if (!res.ok) throw new Error(`[비교 프로 목록 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<ProSummary[]>;
 }
 
 /** 특정 프로에 대한 내 점수 변화 추이 (날짜 오름차순). 마이페이지 프로별 그래프용. */
 export async function getProGrowth(proId: number): Promise<GrowthPoint[]> {
   const res = await authFetch(`/api/users/me/growth?proId=${proId}`, { method: 'GET' });
-  if (!res.ok) throw new Error(`[프로별 추이 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<GrowthPoint[]>;
 }
 
@@ -102,7 +103,7 @@ export interface BestPitchComparisonItem {
 /** 구종별 최고의 1구 카드 목록 */
 export async function getBestPitches(): Promise<BestPitchCard[]> {
   const res = await authFetch('/api/users/me/best-pitches', { method: 'GET' });
-  if (!res.ok) throw new Error(`[최고의 1구 목록 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<BestPitchCard[]>;
 }
 
@@ -114,6 +115,6 @@ export async function getBestPitchComparisons(
     `/api/users/me/best-pitches/${encodeURIComponent(pitchType)}/comparisons`,
     { method: 'GET' },
   );
-  if (!res.ok) throw new Error(`[비교 기록 조회 실패] ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw await toApiError(res);
   return res.json() as Promise<BestPitchComparisonItem[]>;
 }

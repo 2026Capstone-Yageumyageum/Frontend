@@ -10,8 +10,10 @@
  * 인증: SecureStore의 accessToken을 Authorization 헤더에 싣고, 401이면 refreshToken으로 1회 재발급 후 재시도합니다.
  */
 
-import { getAccessToken, getRefreshToken, saveTokens } from '../utils/token';
-import { refreshAccessToken } from './authApi';
+import { getAccessToken } from '../utils/token';
+import { ApiError, isConnectionError, toApiError, toNetworkError, TIMEOUT_ERROR } from './apiError';
+import { refreshTokens } from './tokenRefresher';
+import { endSession } from '../features/auth/session';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.45.251:8080';
 
@@ -121,18 +123,29 @@ export async function authFetch(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  // 통신 자체가 실패하면(서버 미기동·네트워크 단절) fetch가 TypeError를 던진다.
+  // 그대로 두면 화면이 "Network request failed" 같은 내부 문구를 보게 되므로 ApiError로 바꾼다.
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  } catch (error) {
+    throw toNetworkError(error);
+  }
 
-  // 토큰 만료 → refresh 후 1회 재시도
+  // 토큰 만료 → refresh 후 1회 재시도.
+  // refreshTokens()는 동시에 여러 요청이 401을 받아도 갱신 요청을 하나로 합쳐준다.
+  // (리프레시 토큰이 일회용이라, 각자 갱신하면 나중 요청이 반드시 실패한다.)
   if (response.status === 401 && !isRetry) {
-    const refreshToken = await getRefreshToken();
-    if (refreshToken) {
-      try {
-        const tokens = await refreshAccessToken(refreshToken);
-        await saveTokens(tokens.accessToken, tokens.refreshToken);
-        return authFetch(path, options, true);
-      } catch {
-        // 재발급 실패 시 원래 401 응답을 그대로 반환
+    try {
+      await refreshTokens();
+      return authFetch(path, options, true);
+    } catch (error) {
+      // 네트워크 문제로 갱신하지 못한 것뿐이라면 세션은 아직 유효하다.
+      // 로그인 정보를 지우지 않고, 원래의 401을 호출부에 그대로 돌려준다.
+      if (!isConnectionError(error)) {
+        // 리프레시 토큰이 만료·위조된 경우다. 회복할 방법이 없으므로 세션을 끝내고
+        // 로그인 화면으로 되돌린다. 이 처리가 없으면 사용자는 401 화면에 갇힌다.
+        await endSession();
       }
     }
   }
@@ -202,10 +215,7 @@ export async function requestAnalysis(
     body: form,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[분석 업로드 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<UploadResponse>;
 }
@@ -248,10 +258,7 @@ export async function requestBestPitchAnalysis(
     body: form,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[최고의 1구 비교 업로드 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<UploadResponse>;
 }
@@ -259,10 +266,7 @@ export async function requestBestPitchAnalysis(
 /** 영상을 "최고의 1구"로 등록(구종당 1개). */
 export async function registerBestPitch(videoId: number): Promise<void> {
   const response = await authFetch(`/api/analysis/${videoId}/best-pitch`, { method: 'POST' });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[최고의 1구 등록 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 }
 
 /**
@@ -272,10 +276,7 @@ export async function registerBestPitch(videoId: number): Promise<void> {
 export async function getAnalysisResult(videoId: number): Promise<AnalysisResultResponse> {
   const response = await authFetch(`/api/analysis/${videoId}/result`, { method: 'GET' });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[분석 결과 조회 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   const data = (await response.json()) as AnalysisResultResponse;
   data.results = (data.results ?? [])
@@ -289,10 +290,7 @@ export async function getAnalysisResult(videoId: number): Promise<AnalysisResult
 export async function getSkeleton(videoId: number): Promise<SkeletonResponse> {
   const response = await authFetch(`/api/analysis/${videoId}/skeleton`, { method: 'GET' });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[골격 데이터 조회 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<SkeletonResponse>;
 }
@@ -309,10 +307,7 @@ export interface ReferenceData {
 export async function getReferenceData(): Promise<ReferenceData[]> {
   const response = await authFetch('/api/analysis/reference-data', { method: 'GET' });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`[레퍼런스 데이터 조회 실패] ${response.status}: ${errorText}`);
-  }
+  if (!response.ok) throw await toApiError(response);
 
   return response.json() as Promise<ReferenceData[]>;
 }
@@ -337,11 +332,21 @@ export async function pollAnalysisResult(
     opts.onTick?.(result.status);
 
     if (result.status === 'COMPLETED') return result;
+    // 아래 두 실패는 HTTP 에러가 아니라(응답은 200) 폴링 결과로 판정한 것이지만,
+    // 호출부가 다른 API 실패와 똑같이 다룰 수 있도록 ApiError로 통일한다.
     if (result.status === 'FAILED') {
-      throw new Error('[분석 실패] 서버에서 분석이 실패 상태로 종료되었습니다.');
+      throw new ApiError({
+        status: 0,
+        code: 'ANALYSIS_FAILED',
+        message: '분석에 실패했어요. 영상 구도를 확인하고 다시 시도해 주세요.',
+      });
     }
     if (Date.now() >= deadline) {
-      throw new Error('[분석 시간 초과] 결과를 받지 못했습니다. 잠시 후 다시 시도해주세요.');
+      throw new ApiError({
+        status: 0,
+        code: TIMEOUT_ERROR,
+        message: '분석이 예상보다 오래 걸리고 있어요. 잠시 후 다시 시도해 주세요.',
+      });
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }

@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types/navigation';
 import Button from '../components/common/Button';
 import { signupWithNickname } from '../api/authApi';
+import { getErrorMessage } from '../api/apiError';
 import { saveTokens } from '../utils/token';
 
 type SignupScreenRouteProp = RouteProp<RootStackParamList, 'Signup'>;
@@ -28,8 +29,8 @@ export default function Signup() {
 
     setIsLoading(true);
     try {
+      // result에는 accessToken/refreshToken이 담겨 있으므로 로깅하지 않는다.
       const result = await signupWithNickname(email, trimmedNickname);
-      console.log('[닉네임 등록 성공]', result);
 
       if (result.accessToken && result.refreshToken) {
         await saveTokens(result.accessToken, result.refreshToken);
@@ -39,7 +40,9 @@ export default function Signup() {
       navigation.navigate('Home');
     } catch (error) {
       console.error('[닉네임 등록 실패]', error);
-      Alert.alert('오류', '닉네임 등록에 실패했습니다. 다시 시도해주세요.');
+      // 백엔드가 이유를 구분해 내려준다(DUPLICATE_NICKNAME 등). 그 문구를 그대로 보여줘야
+      // 사용자가 무엇을 고쳐야 하는지 알 수 있다.
+      Alert.alert('오류', getErrorMessage(error, '닉네임 등록에 실패했습니다. 다시 시도해주세요.'));
     } finally {
       setIsLoading(false);
     }
