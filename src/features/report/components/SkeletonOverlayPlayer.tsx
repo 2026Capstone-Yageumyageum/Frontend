@@ -519,10 +519,19 @@ export default function SkeletonOverlayPlayer({
     if (hasVideo) {
       const ref = videoRef.current;
       if (!ref) return;
-      if (isPlaying) await ref.pauseAsync();
-      else await ref.playAsync();
+      if (isPlaying) {
+        await ref.pauseAsync();
+      } else {
+        // 사용자가 실제로 재생을 눌렀을 때만 강조를 해제한다. isPlaying을 관찰해서 지우면
+        // expo-av의 지연된 상태 이벤트(handleStatus)가 튈 때 "이 순간 보기" 강조가
+        // 사용자가 재생을 누르지 않았는데도 사라질 수 있다 — 그래서 관찰이 아니라
+        // 이 사용자 동작 지점에서 지운다(리뷰에서 지적된 레이스 컨디션 수정).
+        setActiveFocus(null);
+        await ref.playAsync();
+      }
     } else {
-      // 영상 없음: 가상 클럭 토글(스켈레톤만 재생)
+      // 영상 없음: 가상 클럭 토글(스켈레톤만 재생). 같은 이유로 재생을 "시작"할 때만 해제.
+      if (!isPlaying) setActiveFocus(null);
       setIsPlaying((p) => !p);
     }
   };
@@ -561,10 +570,11 @@ export default function SkeletonOverlayPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.nonce]);
 
-  // 다시 재생하면 강조를 끈다. 움직이기 시작하면 그 각도는 더 이상 맞지 않는다.
-  useEffect(() => {
-    if (isPlaying) setActiveFocus(null);
-  }, [isPlaying]);
+  // 강조 해제는 isPlaying(네이티브 상태 관찰)이 아니라 togglePlay(사용자가 실제로 재생을
+  // 누른 지점)에 묶여 있다. handleStatus는 100ms마다 도는 네이티브 콜백이라 pause/seek
+  // 전환 중 지연된 isPlaying/shouldPlay 이벤트가 튈 수 있는데, 이를 관찰해서 지우면
+  // "이 순간 보기"로 멈춘 직후 그 지연 이벤트가 강조를 도로 꺼버리는 레이스가 생긴다.
+  // (리뷰에서 지적된 문제 — 자세한 설명은 togglePlay 안 주석 참고.)
 
   // 내 스켈레톤: 재생 시간 기준 최근접 프레임
   const userFrame = useMemo<SkeletonFrame | null>(() => {
