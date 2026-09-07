@@ -3,7 +3,9 @@
  * 구간 상세 지표 한 줄.
  *
  * 값 자체(0.42)는 body-frame 정규화 좌표라 사용자에게 의미가 없다. 그래서
- * "차이 / 허용"을 나란히 보여 임계 대비로 읽히게 한다. 판정은 뱃지가 맡는다.
+ * 기준 대비 차이를 임계값 게이지 위 "위치"로 보여준다. 숫자 두 개를 읽고 나눠야
+ * 알던 "허용 대비 얼마나 벗어났나"를 눈으로 바로 읽게 하는 것이 목적이다.
+ * 판정은 뱃지가 맡는다.
  */
 
 import React from 'react';
@@ -18,6 +20,84 @@ const STATUS_STYLE: Record<PhaseMetric['status'], { label: string; color: string
   favorable: { label: '다르지만 유리', color: '#6366F1', bg: 'bg-[#EEF0FF]' },
   unavailable: { label: '측정 못함', color: '#8E949A', bg: 'bg-[#F2F3F4]' },
 };
+
+/**
+ * 게이지가 방향까지 보여주므로 문구도 방향을 갖는다. 절댓값만 쓰면 마커가 왼쪽에 있는데
+ * 문구는 방향이 없어 서로 다른 말을 하게 된다.
+ * 소수 둘째 자리에서 0.00으로 떨어지면 "0.00 큼"이 되므로 그때는 방향을 말하지 않는다.
+ */
+function describeDifference(difference: number): string {
+  const amount = Math.abs(difference).toFixed(2);
+  if (amount === '0.00') {
+    return '기준과 거의 같음';
+  }
+  return `기준보다 ${amount} ${difference > 0 ? '큼' : '작음'}`;
+}
+
+/**
+ * 임계값 게이지. 트랙 가운데가 기준(차이 0)이고, 가운데 밝은 띠가 허용 범위(±threshold)다.
+ * 마커가 띠 안이면 양호, 띠 밖으로 나간 거리가 곧 초과량이다.
+ *
+ * 반폭이 나타내는 값(span)은 |차이|와 임계값 중 큰 쪽을 기준으로 잡되, 임계값에 하한을 둔다.
+ * 하한이 없으면 차이가 0에 가까울 때 허용 띠가 트랙을 가득 채워 "띠"로 보이지 않는다.
+ * 여유 배수(1.15)는 마커가 트랙 끝에 붙어 잘리는 것을 막는다.
+ */
+function ThresholdGauge({
+  difference,
+  threshold,
+  color,
+}: {
+  difference: number;
+  threshold: number;
+  color: string;
+}) {
+  const span = Math.max(Math.abs(difference) * 1.15, threshold * 2.2);
+  // 트랙 반폭(50%p)이 span에 대응하므로, 허용 띠의 한쪽 폭도 같은 축척으로 환산한다.
+  const bandHalf = (threshold / span) * 50;
+  const markerPos = 50 + (difference / span) * 50;
+
+  return (
+    <View className="mb-1.5">
+      <View className="h-3 w-full rounded-full bg-[#F2F4F6] overflow-hidden">
+        <View
+          style={{
+            position: 'absolute',
+            left: `${50 - bandHalf}%`,
+            width: `${bandHalf * 2}%`,
+            height: '100%',
+            backgroundColor: '#E8F8F5',
+          }}
+        />
+        {/* 기준선 */}
+        <View
+          style={{
+            position: 'absolute',
+            left: '50%',
+            width: 1,
+            height: '100%',
+            backgroundColor: '#C3CBD1',
+          }}
+        />
+        {/* 현재 위치 */}
+        <View
+          style={{
+            position: 'absolute',
+            left: `${markerPos}%`,
+            marginLeft: -3,
+            width: 6,
+            height: '100%',
+            borderRadius: 3,
+            backgroundColor: color,
+          }}
+        />
+      </View>
+      <View className="flex-row justify-between mt-1">
+        <AppText className="text-text-secondary text-[10px]">작음</AppText>
+        <AppText className="text-text-secondary text-[10px]">큼</AppText>
+      </View>
+    </View>
+  );
+}
 
 interface PhaseMetricRowProps {
   metric: PhaseMetric;
@@ -58,10 +138,17 @@ export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowPr
         </AppText>
       )}
 
-      {measured && metric.difference !== null && metric.threshold !== null ? (
-        <AppText weight="medium" className="text-text-primary text-xs mb-1">
-          차이 {Math.abs(metric.difference).toFixed(2)} / 허용 {metric.threshold.toFixed(2)}
-        </AppText>
+      {measured && metric.difference !== null && metric.threshold !== null && metric.threshold > 0 ? (
+        <>
+          <ThresholdGauge
+            difference={metric.difference}
+            threshold={metric.threshold}
+            color={style.color}
+          />
+          <AppText weight="medium" className="text-text-primary text-xs mb-1">
+            {describeDifference(metric.difference)} · 허용 ±{metric.threshold.toFixed(2)}
+          </AppText>
+        </>
       ) : null}
 
       {metric.why ? (
