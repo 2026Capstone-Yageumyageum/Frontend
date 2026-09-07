@@ -281,7 +281,12 @@ function SkeletonSvg({
       {(() => {
         const joints = highlight?.joints ?? [];
         if (joints.length === 0) return null;
-        if (!joints.every(isVisible)) {
+        // 길이 2(암슬롯)는 몸통축(골반 중점→어깨 중점)도 기하에 쓰인다.
+        // 몸통축 관절도 "기하에 필요한 관절"이므로 여기서 함께 검사한다 — 검사 지점은 하나만 둔다.
+        const requiredJoints = joints.length === 2
+          ? [...joints, 'left_hip', 'right_hip', 'left_shoulder', 'right_shoulder']
+          : joints;
+        if (!requiredJoints.every(isVisible)) {
           // 반쯤 그린 그림은 잘못된 각도로 읽힌다. 아무것도 안 그리는 대신 이유를 말한다.
           return (
             <Text x={boxW / 2} y={24} fill={HIGHLIGHT_COLOR} fontSize={12} textAnchor="middle">
@@ -305,9 +310,9 @@ function SkeletonSvg({
         if (pts.length === 2) {
           vertex = pts[0];
           rayA = pts[1];
-          const hipMid = midOf('left_hip', 'right_hip');
-          const shoulderMid = midOf('left_shoulder', 'right_shoulder');
-          if (!hipMid || !shoulderMid) return null;
+          // requiredJoints 검사에서 이미 확인됐으므로 여기서는 실패하지 않는다.
+          const hipMid = midOf('left_hip', 'right_hip')!;
+          const shoulderMid = midOf('left_shoulder', 'right_shoulder')!;
           const dx = shoulderMid.px - hipMid.px;
           const dy = shoulderMid.py - hipMid.py;
           const len = Math.hypot(dx, dy) || 1;
