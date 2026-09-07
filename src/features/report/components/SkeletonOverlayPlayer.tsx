@@ -374,7 +374,12 @@ export default function SkeletonOverlayPlayer({
 
     setPositionSec(posSec);
     if (status.durationMillis) setDurationSec(status.durationMillis / 1000);
-    setIsPlaying(status.isPlaying ?? false);
+    // 버퍼링이나 되감기(setPositionAsync) 중에는 expo-av가 일시적으로 isPlaying=false를
+    // 보고한다. 그대로 반영하면 재생은 계속되는데 버튼 아이콘만 재생↔일시정지로 깜빡인다.
+    // 이 컴포넌트는 playRange 끝에서 매번 되감으므로 특히 자주 걸린다.
+    // 그래서 "재생 의도"(shouldPlay)도 함께 본다. 진짜 정지는 위 didJustFinish 분기와
+    // 사용자의 일시정지(pauseAsync → shouldPlay=false)로만 일어난다.
+    setIsPlaying((status.isPlaying ?? false) || (status.shouldPlay ?? false));
   };
 
   // 영상 실제 해상도는 onReadyForDisplay로 전달된다(expo-av). COVER 좌표 매핑에 사용.
