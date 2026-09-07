@@ -18,6 +18,10 @@ export interface PhaseMetric {
   threshold: number | null;
   status: 'good' | 'warn' | 'favorable' | 'unavailable';
   why: string | null;
+  userJoints: string[];
+  proJoints: string[];
+  /** 비교 대상 쪽 측정 프레임. 실시간 모드에서 비교 스켈레톤을 여기에 고정한다. */
+  proFrame: number | null;
   /** "이 순간 보기"가 이동할 프레임. 없으면 버튼을 감춘다. */
   userFrame: number | null;
 }

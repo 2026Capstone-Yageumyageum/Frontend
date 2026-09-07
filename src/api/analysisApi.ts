@@ -87,6 +87,9 @@ export interface PhaseMetricDetail {
   status: 'good' | 'warn' | 'favorable' | 'unavailable';
   favorableDirection: 'positive' | 'negative' | null;
   why: string | null;
+  /** 이 지표가 측정에 쓴 관절. 길이 1=강조만, 2=몸통축 대비 각, 3=가운데가 꼭짓점인 각. */
+  userJoints?: string[] | null;
+  proJoints?: string[] | null;
   /** 측정이 일어난 프레임. "이 순간 보기"가 쓴다. */
   userFrame: number | null;
   proFrame: number | null;

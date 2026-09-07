@@ -111,6 +111,9 @@ function groupMetricsByPhase(
       threshold: m.threshold,
       status: m.status,
       why: m.why,
+      userJoints: m.userJoints ?? [],
+      proJoints: m.proJoints ?? [],
+      proFrame: m.proFrame,
       userFrame: m.userFrame,
     });
     grouped.set(m.phase, list);

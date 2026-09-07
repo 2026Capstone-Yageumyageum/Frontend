@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, TouchableOpacity, LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import Svg, { Line, Circle } from 'react-native-svg';
+import Svg, { Line, Circle, G, Path, Text } from 'react-native-svg';
 import AppText from '../../../components/common/AppText';
 import {
   SkeletonFrame,
@@ -202,6 +202,20 @@ function PhaseBar({
   );
 }
 
+const HIGHLIGHT_COLOR = '#F59E0B';
+
+/** 화면 좌표(y가 아래로 증가)에서 두 각 사이의 작은 쪽 호. */
+function arcPath(cx: number, cy: number, r: number, a0: number, a1: number): string {
+  const x0 = cx + (r * Math.cos(a0));
+  const y0 = cy + (r * Math.sin(a0));
+  const x1 = cx + (r * Math.cos(a1));
+  const y1 = cy + (r * Math.sin(a1));
+  let delta = a1 - a0;
+  while (delta <= -Math.PI) delta += 2 * Math.PI;
+  while (delta > Math.PI) delta -= 2 * Math.PI;
+  return `M ${x0} ${y0} A ${r} ${r} 0 0 ${delta > 0 ? 1 : 0} ${x1} ${y1}`;
+}
+
 /** 한 프레임의 스켈레톤을 SVG로 그린다. */
 function SkeletonSvg({
   frame,
@@ -209,12 +223,14 @@ function SkeletonSvg({
   boxH,
   mapPoint,
   color,
+  highlight,
 }: {
   frame: SkeletonFrame | null;
   boxW: number;
   boxH: number;
   mapPoint: PointMapper;
   color: string;
+  highlight?: { joints: string[]; label: string | null } | null;
 }) {
   if (!frame || boxW <= 0 || boxH <= 0) return null;
 
@@ -222,6 +238,12 @@ function SkeletonSvg({
   const isVisible = (joint: string): boolean => {
     const p = frame.points[joint];
     return !!p && p.confidence >= CONFIDENCE_THRESHOLD;
+  };
+  const midOf = (a: string, b: string) => {
+    if (!isVisible(a) || !isVisible(b)) return null;
+    const pa = map(frame.points[a].x, frame.points[a].y);
+    const pb = map(frame.points[b].x, frame.points[b].y);
+    return { px: (pa.px + pb.px) / 2, py: (pa.py + pb.py) / 2 };
   };
 
   return (
@@ -256,6 +278,78 @@ function SkeletonSvg({
           <Circle key={joint} cx={p.px} cy={p.py} r={joint === 'nose' ? 4.5 : 3} fill={color} />
         );
       })}
+      {(() => {
+        const joints = highlight?.joints ?? [];
+        if (joints.length === 0) return null;
+        if (!joints.every(isVisible)) {
+          // 반쯤 그린 그림은 잘못된 각도로 읽힌다. 아무것도 안 그리는 대신 이유를 말한다.
+          return (
+            <Text x={boxW / 2} y={24} fill={HIGHLIGHT_COLOR} fontSize={12} textAnchor="middle">
+              관절이 가려져 표시할 수 없어요
+            </Text>
+          );
+        }
+        const pts = joints.map((j) => map(frame.points[j].x, frame.points[j].y));
+
+        // 길이 1은 강조만. 각도 기하가 없다.
+        if (pts.length === 1) {
+          return <Circle cx={pts[0].px} cy={pts[0].py} r={7} fill={HIGHLIGHT_COLOR} />;
+        }
+
+        // 길이 2 = 몸통축 대비 각(암슬롯): 꼭짓점은 어깨, 기준은 몸통축 방향.
+        // 길이 3 = 사이각(굽힘각): 꼭짓점은 가운데.
+        let vertex = pts[1];
+        let rayA = pts[0];
+        let rayB = pts[2];
+        let axisEnd: { px: number; py: number } | null = null;
+        if (pts.length === 2) {
+          vertex = pts[0];
+          rayA = pts[1];
+          const hipMid = midOf('left_hip', 'right_hip');
+          const shoulderMid = midOf('left_shoulder', 'right_shoulder');
+          if (!hipMid || !shoulderMid) return null;
+          const dx = shoulderMid.px - hipMid.px;
+          const dy = shoulderMid.py - hipMid.py;
+          const len = Math.hypot(dx, dy) || 1;
+          axisEnd = { px: vertex.px + ((dx / len) * 60), py: vertex.py + ((dy / len) * 60) };
+          rayB = axisEnd;
+        }
+
+        const a0 = Math.atan2(rayA.py - vertex.py, rayA.px - vertex.px);
+        const a1 = Math.atan2(rayB.py - vertex.py, rayB.px - vertex.px);
+        let mid = (a0 + a1) / 2;
+        if (Math.abs(a1 - a0) > Math.PI) mid += Math.PI;
+
+        return (
+          <G>
+            <Line
+              x1={vertex.px} y1={vertex.py} x2={rayA.px} y2={rayA.py}
+              stroke={HIGHLIGHT_COLOR} strokeWidth={4} strokeLinecap="round"
+            />
+            <Line
+              x1={vertex.px} y1={vertex.py} x2={rayB.px} y2={rayB.py}
+              stroke={HIGHLIGHT_COLOR} strokeWidth={axisEnd ? 2 : 4}
+              strokeDasharray={axisEnd ? '5,4' : undefined} strokeLinecap="round"
+            />
+            <Path d={arcPath(vertex.px, vertex.py, 24, a0, a1)} stroke={HIGHLIGHT_COLOR} strokeWidth={2} fill="none" />
+            {pts.map((p, i) => (
+              <Circle key={`h${i}`} cx={p.px} cy={p.py} r={6} fill={HIGHLIGHT_COLOR} />
+            ))}
+            {highlight?.label ? (
+              <Text
+                x={vertex.px + (Math.cos(mid) * 40)}
+                y={vertex.py + (Math.sin(mid) * 40)}
+                fill={HIGHLIGHT_COLOR}
+                fontSize={14}
+                fontWeight="bold"
+                textAnchor="middle"
+              >
+                {highlight.label}
+              </Text>
+            ) : null}
+          </G>
+        );
+      })()}
     </Svg>
   );
 }
