@@ -94,8 +94,8 @@ function ThresholdGauge({
 
 interface PhaseMetricRowProps {
   metric: PhaseMetric;
-  /** 지표가 측정된 순간으로 이동. 없으면 버튼을 그리지 않는다. */
-  onSeekFrame?: (frame: number) => void;
+  /** 지표가 측정된 순간으로 이동하고 그 측정을 스켈레톤에 표시한다. */
+  onSeekFrame?: (frame: number, metric: PhaseMetric) => void;
 }
 
 export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowProps) {
@@ -150,7 +150,7 @@ export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowPr
 
       {canSeek ? (
         <TouchableOpacity
-          onPress={() => onSeekFrame?.(metric.userFrame as number)}
+          onPress={() => onSeekFrame?.(metric.userFrame as number, metric)}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel={`${metric.label}이 측정된 순간으로 이동`}

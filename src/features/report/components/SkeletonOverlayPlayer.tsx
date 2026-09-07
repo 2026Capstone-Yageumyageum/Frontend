@@ -72,6 +72,15 @@ interface SkeletonOverlayPlayerProps {
   seekRequest?: { frame: number; nonce: number };
   /** 구간별 사용자↔비교 프레임 대응. 비면 실시간 정렬로 폴백한다. */
   alignmentSpans?: PhaseSpan[];
+  /** 지표 측정 순간 표시. nonce가 바뀌면 재생을 멈추고 강조를 켠다. */
+  focus?: {
+    userJoints: string[];
+    proJoints: string[];
+    userLabel: string | null;
+    proLabel: string | null;
+    proFrame: number | null;
+    nonce: number;
+  };
 }
 
 interface NaturalSize {
@@ -371,6 +380,7 @@ export default function SkeletonOverlayPlayer({
   compareShortLabel = '프로',
   seekRequest,
   alignmentSpans,
+  focus,
 }: SkeletonOverlayPlayerProps) {
   const isGoodScore = score >= 70;
   const timelineColor = isGoodScore ? '#A3C8BC' : '#DCA876';
@@ -393,6 +403,9 @@ export default function SkeletonOverlayPlayer({
   // 동작 정렬이 기본이다. 점수가 구간 진행률로 비교하므로 화면도 같은 기준을 써야
   // 사용자가 보는 것과 점수가 말하는 것이 일치한다. 실시간은 템포 차이를 보는 용도로 남긴다.
   const [alignMotion, setAlignMotion] = useState(true);
+
+  // 지표 측정 순간 강조. 포커스가 오면 재생을 멈추고, 재생을 다시 누르면 꺼진다.
+  const [activeFocus, setActiveFocus] = useState<typeof focus | null>(null);
 
   const hasVideo = !!userVideoUri;
   // 스켈레톤 자체의 재생 길이(초). 영상이 없을 때(피드)나 영상 로드 전 타임축 기준으로 쓴다.
@@ -538,6 +551,21 @@ export default function SkeletonOverlayPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seekRequest?.nonce]);
 
+  // 포커스 요청이 오면 재생을 멈춘다. 측정 순간을 검증하는 것이 목적이라 흘러가면 안 된다.
+  useEffect(() => {
+    if (!focus) return;
+    setActiveFocus(focus);
+    if (hasVideo) videoRef.current?.pauseAsync().catch(() => {});
+    setIsPlaying(false);
+    // nonce만 본다 — 같은 지표를 다시 눌러도 동작해야 한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.nonce]);
+
+  // 다시 재생하면 강조를 끈다. 움직이기 시작하면 그 각도는 더 이상 맞지 않는다.
+  useEffect(() => {
+    if (isPlaying) setActiveFocus(null);
+  }, [isPlaying]);
+
   // 내 스켈레톤: 재생 시간 기준 최근접 프레임
   const userFrame = useMemo<SkeletonFrame | null>(() => {
     if (userFrames.length === 0) return null;
@@ -619,6 +647,12 @@ export default function SkeletonOverlayPlayer({
   const proFrame = useMemo<SkeletonFrame | null>(() => {
     if (proFrames.length === 0) return null;
 
+    // 포커스 중(측정 순간 보기)이고 실시간 모드일 때만 비교 스켈레톤을 그 측정 프레임으로 고정한다.
+    // 동작 정렬 모드에서는 구간 진행률 대응이 이미 측정 순간을 맞춰준다.
+    if (activeFocus && !alignMotion && activeFocus.proFrame != null) {
+      return frameNearestFrameIndex(proFrames, activeFocus.proFrame);
+    }
+
     // 동작 정렬 결과가 있으면 그대로 쓴다(alignedProFrame이 실패하면 아래 실시간 경로로 폴백).
     if (alignedProFrame) return alignedProFrame;
 
@@ -631,7 +665,7 @@ export default function SkeletonOverlayPlayer({
     // 동작 구간 정보가 없으면 재생 시간에 가장 가까운 프로 프레임(자연 속도)
     const i = frameIndexAtTime(proFrames, positionSec);
     return i >= 0 ? proFrames[i] : null;
-  }, [proFrames, alignedProFrame, proMotionTime, userMotionTime, positionSec]);
+  }, [proFrames, activeFocus, alignMotion, alignedProFrame, proMotionTime, userMotionTime, positionSec]);
 
   // 내 스켈레톤: 영상에 정렬(COVER + maxDim 정규화)
   const userMapper = useMemo<PointMapper>(
@@ -781,6 +815,11 @@ export default function SkeletonOverlayPlayer({
               boxH={leftBox.h}
               mapPoint={userMapper}
               color="#3BC1A8"
+              highlight={
+                activeFocus
+                  ? { joints: activeFocus.userJoints, label: activeFocus.userLabel }
+                  : null
+              }
             />
           </View>
           {/* 로컬 영상이 없으면(피드 진입 등) 스켈레톤만 어두운 배경에 표시하고,
@@ -805,6 +844,11 @@ export default function SkeletonOverlayPlayer({
               boxH={rightBox.h}
               mapPoint={proMapper}
               color="#C9A8FF"
+              highlight={
+                activeFocus
+                  ? { joints: activeFocus.proJoints, label: activeFocus.proLabel }
+                  : null
+              }
             />
             <View className="absolute bottom-1 left-0 right-0 items-center">
               <AppText className="text-text-secondary text-[10px]">{compareLabel}</AppText>

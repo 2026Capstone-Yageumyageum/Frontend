@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppText from '../../../components/common/AppText';
-import { FeedbackMetric, PhaseFeedback as PhaseFeedbackType } from '../types/report.types';
+import { FeedbackMetric, PhaseFeedback as PhaseFeedbackType, PhaseMetric } from '../types/report.types';
 import PhaseMetricRow from './PhaseMetricRow';
 
 interface PhaseFeedbackProps {
   data: PhaseFeedbackType;
   reportType?: 'pro' | 'me';
   /** 지표가 측정된 순간으로 이동. 리포트 화면이 내려준다. */
-  onSeekFrame?: (frame: number) => void;
+  onSeekFrame?: (frame: number, metric: PhaseMetric) => void;
 }
 
 /** 나 vs 비교대상 측정값 비교 막대 그래프(스켈레톤 색과 동일: 나=초록, 비교=보라). */

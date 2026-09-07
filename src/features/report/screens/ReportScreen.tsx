@@ -28,6 +28,7 @@ import PhaseScoreCard from '../components/PhaseScoreCard';
 import ReleaseAnalysisCard from '../components/ReleaseAnalysisCard';
 import ReportNotice from '../components/ReportNotice';
 import { buildComparePlayers, buildReportData } from '../utils/mapReport';
+import { PhaseMetric } from '../types/report.types';
 import {
   AnalysisResultResponse,
   getAnalysisResult,
@@ -163,9 +164,27 @@ export default function ReportScreen() {
   // 구간 지표의 "이 순간 보기" → 플레이어로 이동 + 플레이어가 보이도록 스크롤.
   const scrollViewRef = useRef<ScrollView>(null);
   const [seekRequest, setSeekRequest] = useState<{ frame: number; nonce: number } | null>(null);
+  const [focus, setFocus] = useState<{
+    userJoints: string[];
+    proJoints: string[];
+    userLabel: string | null;
+    proLabel: string | null;
+    proFrame: number | null;
+    nonce: number;
+  } | null>(null);
 
-  const handleSeekFrame = useCallback((frame: number) => {
+  const handleSeekFrame = useCallback((frame: number, metric: PhaseMetric) => {
     setSeekRequest((prev) => ({ frame, nonce: (prev?.nonce ?? 0) + 1 }));
+    // 각도는 서버가 보낸 값을 그대로 라벨로 쓴다. 앱이 다시 계산하지 않는다.
+    const unitSuffix = metric.unit === 'degree' ? '°' : '';
+    setFocus((prev) => ({
+      userJoints: metric.userJoints,
+      proJoints: metric.proJoints,
+      userLabel: metric.userValue != null ? `${Math.round(metric.userValue)}${unitSuffix}` : null,
+      proLabel: metric.proValue != null ? `${Math.round(metric.proValue)}${unitSuffix}` : null,
+      proFrame: metric.proFrame ?? null,
+      nonce: (prev?.nonce ?? 0) + 1,
+    }));
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, []);
 
@@ -256,6 +275,7 @@ export default function ReportScreen() {
           compareShortLabel={reportType === 'me' ? '베스트' : '프로'}
           seekRequest={seekRequest ?? undefined}
           alignmentSpans={currentData.insight.alignmentSpans}
+          focus={focus ?? undefined}
         />
 
         {/*
