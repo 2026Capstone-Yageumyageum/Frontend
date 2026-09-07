@@ -104,6 +104,7 @@ function groupMetricsByPhase(
     list.push({
       key: m.key,
       label: m.label,
+      unit: m.unit ?? null,
       userValue: m.userValue,
       proValue: m.proValue,
       difference: m.difference,

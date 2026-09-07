@@ -13,6 +13,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AppText from '../../../components/common/AppText';
 import { PhaseMetric } from '../types/report.types';
+import { describeDifference, formatJudgment, formatValue } from '../utils/formatMetric';
 
 const STATUS_STYLE: Record<PhaseMetric['status'], { label: string; color: string; bg: string }> = {
   good: { label: '양호', color: '#3BC1A8', bg: 'bg-[#E8F8F5]' },
@@ -20,19 +21,6 @@ const STATUS_STYLE: Record<PhaseMetric['status'], { label: string; color: string
   favorable: { label: '다르지만 유리', color: '#6366F1', bg: 'bg-[#EEF0FF]' },
   unavailable: { label: '측정 못함', color: '#8E949A', bg: 'bg-[#F2F3F4]' },
 };
-
-/**
- * 게이지가 방향까지 보여주므로 문구도 방향을 갖는다. 절댓값만 쓰면 마커가 왼쪽에 있는데
- * 문구는 방향이 없어 서로 다른 말을 하게 된다.
- * 소수 둘째 자리에서 0.00으로 떨어지면 "0.00 큼"이 되므로 그때는 방향을 말하지 않는다.
- */
-function describeDifference(difference: number): string {
-  const amount = Math.abs(difference).toFixed(2);
-  if (amount === '0.00') {
-    return '기준과 거의 같음';
-  }
-  return `기준보다 ${amount} ${difference > 0 ? '큼' : '작음'}`;
-}
 
 /**
  * 임계값 게이지. 트랙 가운데가 기준(차이 0)이고, 가운데 밝은 띠가 허용 범위(±threshold)다.
@@ -45,10 +33,12 @@ function describeDifference(difference: number): string {
 function ThresholdGauge({
   difference,
   threshold,
+  unit,
   color,
 }: {
   difference: number;
   threshold: number;
+  unit: string | null;
   color: string;
 }) {
   const span = Math.max(Math.abs(difference) * 1.15, threshold * 2.2);
@@ -93,6 +83,9 @@ function ThresholdGauge({
       </View>
       <View className="flex-row justify-between mt-1">
         <AppText className="text-text-secondary text-[10px]">작음</AppText>
+        <AppText className="text-text-secondary text-[10px]">
+          허용 ±{formatJudgment(threshold, unit)}
+        </AppText>
         <AppText className="text-text-secondary text-[10px]">큼</AppText>
       </View>
     </View>
@@ -128,8 +121,7 @@ export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowPr
       {metric.userValue !== null && metric.proValue !== null ? (
         <View className="flex-row items-center mb-1">
           <AppText className="text-text-secondary text-xs">
-            {/* 아래 "차이/허용" 줄과 자릿수를 맞춘다. 단위 없는 정규화 좌표라 단위는 붙이지 않는다. */}
-            나 {metric.userValue.toFixed(2)}  ·  기준 {metric.proValue.toFixed(2)}
+            나 {formatValue(metric.userValue, metric.unit)}  ·  기준 {formatValue(metric.proValue, metric.unit)}
           </AppText>
         </View>
       ) : (
@@ -143,10 +135,11 @@ export default function PhaseMetricRow({ metric, onSeekFrame }: PhaseMetricRowPr
           <ThresholdGauge
             difference={metric.difference}
             threshold={metric.threshold}
+            unit={metric.unit}
             color={style.color}
           />
           <AppText weight="medium" className="text-text-primary text-xs mb-1">
-            {describeDifference(metric.difference)} · 허용 ±{metric.threshold.toFixed(2)}
+            {describeDifference(metric.difference, metric.unit)}
           </AppText>
         </>
       ) : null}

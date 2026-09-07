@@ -8,6 +8,8 @@ export interface FeedbackMetric {
 export interface PhaseMetric {
   key: string;
   label: string;
+  /** "degree"면 도(°) 단위. null이면 단위 없는 정규화 좌표. */
+  unit: string | null;
   userValue: number | null;
   proValue: number | null;
   difference: number | null;

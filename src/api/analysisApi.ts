@@ -76,7 +76,9 @@ export interface PhaseMetricDetail {
   phase: string;
   key: string;
   label: string;
-  /** body-frame 정규화 좌표. 단위가 없으므로 화면에서 단위를 붙이지 않는다. */
+  /** "degree"면 도(°) 단위. null이면 단위 없는 body-frame 정규화 좌표. */
+  unit?: string | null;
+  /** 단위는 unit이 정한다. 각도가 아니면 정규화 좌표라 화면에서 단위를 붙이지 않는다. */
   userValue: number | null;
   proValue: number | null;
   /** userValue - proValue. 부호를 유지한다(evidence.difference는 절댓값이라 다름). */
