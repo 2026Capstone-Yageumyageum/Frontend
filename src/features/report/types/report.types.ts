@@ -1,3 +1,5 @@
+import { PhaseSpan } from '../utils/motionAlign';
+
 /** 나 vs 선수 측정값 비교(그래프로 표시) */
 export interface FeedbackMetric {
   userValue: number; // 나
@@ -61,6 +63,8 @@ export interface ReleasePoint {
 
 export interface InsightData {
   phaseScores: PhaseScore[];
+  /** 비교 스켈레톤을 점수와 같은 기준으로 정렬하는 데 쓴다. 없으면 실시간 정렬로 폴백. */
+  alignmentSpans: PhaseSpan[];
   releaseTiming: ReleaseTiming;
   releasePoint: ReleasePoint;
 }

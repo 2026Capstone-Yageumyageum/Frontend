@@ -255,6 +255,7 @@ export default function ReportScreen() {
           compareLabel={reportType === 'me' ? '최고의 1구' : '프로 스켈레톤'}
           compareShortLabel={reportType === 'me' ? '베스트' : '프로'}
           seekRequest={seekRequest ?? undefined}
+          alignmentSpans={currentData.insight.alignmentSpans}
         />
 
         {/*

@@ -19,8 +19,10 @@ import {
   SKELETON_EDGES,
   SKELETON_JOINTS,
   frameIndexAtTime,
+  frameNearestFrameIndex,
   timeAtFrameIndex,
 } from '../utils/skeleton';
+import { PhaseSpan, alignToCompareFrame } from '../utils/motionAlign';
 
 /** 재생 배속 옵션 — 사용자 영상·프로 스켈레톤에 동일 적용(같은 속도끼리 비교). */
 const SPEED_OPTIONS = [1, 0.5, 0.25] as const;
@@ -68,6 +70,8 @@ interface SkeletonOverlayPlayerProps {
    * 같은 프레임을 다시 눌러도 동작해야 하므로 nonce로 변화를 알린다.
    */
   seekRequest?: { frame: number; nonce: number };
+  /** 구간별 사용자↔비교 프레임 대응. 비면 실시간 정렬로 폴백한다. */
+  alignmentSpans?: PhaseSpan[];
 }
 
 interface NaturalSize {
@@ -267,6 +271,7 @@ export default function SkeletonOverlayPlayer({
   compareLabel = '프로 스켈레톤',
   compareShortLabel = '프로',
   seekRequest,
+  alignmentSpans,
 }: SkeletonOverlayPlayerProps) {
   const isGoodScore = score >= 70;
   const timelineColor = isGoodScore ? '#A3C8BC' : '#DCA876';
@@ -285,6 +290,10 @@ export default function SkeletonOverlayPlayer({
   const [speedIdx, setSpeedIdx] = useState(0);
   const speed = SPEED_OPTIONS[speedIdx];
   const cycleSpeed = () => setSpeedIdx((i) => (i + 1) % SPEED_OPTIONS.length);
+
+  // 동작 정렬이 기본이다. 점수가 구간 진행률로 비교하므로 화면도 같은 기준을 써야
+  // 사용자가 보는 것과 점수가 말하는 것이 일치한다. 실시간은 템포 차이를 보는 용도로 남긴다.
+  const [alignMotion, setAlignMotion] = useState(true);
 
   const hasVideo = !!userVideoUri;
   // 스켈레톤 자체의 재생 길이(초). 영상이 없을 때(피드)나 영상 로드 전 타임축 기준으로 쓴다.
@@ -490,6 +499,18 @@ export default function SkeletonOverlayPlayer({
   // 그대로 쓰므로 배속을 바꾸면 사용자·프로가 동일하게 느려지거나 실시간으로 재생된다.
   const proFrame = useMemo<SkeletonFrame | null>(() => {
     if (proFrames.length === 0) return null;
+
+    // 동작 정렬: 점수와 같은 구간 진행률 대응을 쓴다.
+    if (alignMotion && alignmentSpans && alignmentSpans.length > 0 && userFrames.length > 0) {
+      const ui = frameIndexAtTime(userFrames, positionSec);
+      if (ui >= 0) {
+        const aligned = alignToCompareFrame(userFrames[ui].frameIndex, alignmentSpans);
+        if (aligned != null) {
+          return frameNearestFrameIndex(proFrames, aligned);
+        }
+      }
+    }
+
     if (proMotionTime && userMotionTime) {
       const elapsed = Math.max(0, positionSec - userMotionTime.start);
       const proT = Math.min(proMotionTime.start + elapsed, proMotionTime.end);
@@ -499,7 +520,15 @@ export default function SkeletonOverlayPlayer({
     // 동작 구간 정보가 없으면 재생 시간에 가장 가까운 프로 프레임(자연 속도)
     const i = frameIndexAtTime(proFrames, positionSec);
     return i >= 0 ? proFrames[i] : null;
-  }, [proFrames, proMotionTime, userMotionTime, positionSec]);
+  }, [
+    proFrames,
+    proMotionTime,
+    userMotionTime,
+    positionSec,
+    alignMotion,
+    alignmentSpans,
+    userFrames,
+  ]);
 
   // 내 스켈레톤: 영상에 정렬(COVER + maxDim 정규화)
   const userMapper = useMemo<PointMapper>(
@@ -701,6 +730,21 @@ export default function SkeletonOverlayPlayer({
             <PhaseBar label={compareShortLabel} bands={proBands} progressPct={proProgressPct} fallbackColor="#C9A8FF" />
           )}
         </View>
+
+        {/* 정렬 모드 토글: 비교 대상이 있을 때만(정렬할 상대가 없으면 숨김) */}
+        {!isSingleVideo && (
+          <TouchableOpacity
+            onPress={() => setAlignMotion((on) => !on)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={alignMotion ? '실시간 재생으로 전환' : '동작 정렬 재생으로 전환'}
+            className="ml-3 px-3 py-1.5 rounded-full bg-surface-page border border-border/50"
+          >
+            <AppText weight="bold" className="text-text-secondary text-xs">
+              {alignMotion ? '동작 정렬' : '실시간'}
+            </AppText>
+          </TouchableOpacity>
+        )}
 
         {/* 배속 토글: 사용자·프로에 동일 적용(같은 속도끼리 비교) */}
         <TouchableOpacity

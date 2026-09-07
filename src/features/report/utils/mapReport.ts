@@ -166,6 +166,7 @@ export function buildReportData(
       feedbacks: [],
       insight: {
         phaseScores: [],
+        alignmentSpans: [],
         releaseTiming: EMPTY_RELEASE_TIMING,
         releasePoint: EMPTY_RELEASE_POINT,
       },
@@ -246,6 +247,23 @@ export function buildReportData(
     score: round1(p.score),
   }));
 
+  // 정렬은 점수가 쓰는 것과 같은 구간 경계를 쓴다. 값이 온전한 구간만 담는다 —
+  // 하나라도 숫자가 아니면 그 구간에서 대응이 깨진다.
+  const alignmentSpans = detail.phaseScores
+    .filter(
+      (p) =>
+        Number.isFinite(p.userStartFrame) &&
+        Number.isFinite(p.userEndFrame) &&
+        Number.isFinite(p.proStartFrame) &&
+        Number.isFinite(p.proEndFrame),
+    )
+    .map((p) => ({
+      userStartFrame: p.userStartFrame,
+      userEndFrame: p.userEndFrame,
+      proStartFrame: p.proStartFrame,
+      proEndFrame: p.proEndFrame,
+    }));
+
   const timing = detail.release?.timing;
   const releaseTiming: ReleaseTiming = {
     myTiming: round1(timing?.userPitchPercent),
@@ -270,7 +288,7 @@ export function buildReportData(
     comparePlayer: player,
     hasDetail: true,
     feedbacks,
-    insight: { phaseScores, releaseTiming, releasePoint },
+    insight: { phaseScores, alignmentSpans, releaseTiming, releasePoint },
     undetectedPhaseNames,
   };
 }
