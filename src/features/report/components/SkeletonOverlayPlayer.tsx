@@ -494,22 +494,34 @@ export default function SkeletonOverlayPlayer({
     );
   }, [userMotion, userFrame]);
 
+  // 동작 정렬(점수와 같은 구간 진행률 대응)로 얻은 프로 프레임. proFrame과 진행 바 도트가
+  // 같은 값을 공유하도록 이 memo 하나만 alignToCompareFrame을 호출한다 — 각자 따로 계산하면
+  // 둘이 어긋날 수 있다(리뷰에서 지적된 문제).
+  const alignedProFrame = useMemo<SkeletonFrame | null>(() => {
+    if (
+      !alignMotion ||
+      !alignmentSpans ||
+      alignmentSpans.length === 0 ||
+      userFrames.length === 0 ||
+      proFrames.length === 0
+    ) {
+      return null;
+    }
+    const ui = frameIndexAtTime(userFrames, positionSec);
+    if (ui < 0) return null;
+    const aligned = alignToCompareFrame(userFrames[ui].frameIndex, alignmentSpans);
+    if (aligned == null) return null;
+    return frameNearestFrameIndex(proFrames, aligned);
+  }, [alignMotion, alignmentSpans, userFrames, proFrames, positionSec]);
+
   // 프로 스켈레톤: 사용자 동작 진행도에 워프하지 않고, 사용자 동작이 시작되는 시점에
   // 맞춰 프로의 '실제 타이밍'으로 재생한다. positionSec(배속이 반영된 영상 시계)을
   // 그대로 쓰므로 배속을 바꾸면 사용자·프로가 동일하게 느려지거나 실시간으로 재생된다.
   const proFrame = useMemo<SkeletonFrame | null>(() => {
     if (proFrames.length === 0) return null;
 
-    // 동작 정렬: 점수와 같은 구간 진행률 대응을 쓴다.
-    if (alignMotion && alignmentSpans && alignmentSpans.length > 0 && userFrames.length > 0) {
-      const ui = frameIndexAtTime(userFrames, positionSec);
-      if (ui >= 0) {
-        const aligned = alignToCompareFrame(userFrames[ui].frameIndex, alignmentSpans);
-        if (aligned != null) {
-          return frameNearestFrameIndex(proFrames, aligned);
-        }
-      }
-    }
+    // 동작 정렬 결과가 있으면 그대로 쓴다(alignedProFrame이 실패하면 아래 실시간 경로로 폴백).
+    if (alignedProFrame) return alignedProFrame;
 
     if (proMotionTime && userMotionTime) {
       const elapsed = Math.max(0, positionSec - userMotionTime.start);
@@ -520,15 +532,7 @@ export default function SkeletonOverlayPlayer({
     // 동작 구간 정보가 없으면 재생 시간에 가장 가까운 프로 프레임(자연 속도)
     const i = frameIndexAtTime(proFrames, positionSec);
     return i >= 0 ? proFrames[i] : null;
-  }, [
-    proFrames,
-    proMotionTime,
-    userMotionTime,
-    positionSec,
-    alignMotion,
-    alignmentSpans,
-    userFrames,
-  ]);
+  }, [proFrames, alignedProFrame, proMotionTime, userMotionTime, positionSec]);
 
   // 내 스켈레톤: 영상에 정렬(COVER + maxDim 정규화)
   const userMapper = useMemo<PointMapper>(
@@ -610,15 +614,26 @@ export default function SkeletonOverlayPlayer({
       ? Math.min(100, (positionSec / totalSec) * 100)
       : 0;
 
-  // 프로 진행 바: 프로의 실제 타이밍 기준 진행도(사용자와 길이가 달라 따로 계산).
+  // 프로 진행 바: 동작 정렬 모드에서는 alignedProFrame(=proFrame이 실제로 그리는 프레임)을
+  // proBands와 같은 프레임 기준(proMotion)으로 정규화해 도트가 화면과 항상 같은 프레임을
+  // 가리키게 한다. 정렬이 없거나 실패하면 기존 실시간(타이밍 기준) 폴백을 그대로 쓴다.
   const proProgressPct = useMemo(() => {
+    if (alignedProFrame && proMotion) {
+      const len = proMotion.end - proMotion.start;
+      if (len > 0) {
+        return Math.max(
+          0,
+          Math.min(100, ((alignedProFrame.frameIndex - proMotion.start) / len) * 100),
+        );
+      }
+    }
     if (proMotionTime && userMotionTime) {
       const elapsed = Math.max(0, positionSec - userMotionTime.start);
       const dp = proMotionTime.end - proMotionTime.start;
       return dp > 0 ? Math.min(100, (elapsed / dp) * 100) : 0;
     }
     return progressPct;
-  }, [proMotionTime, userMotionTime, positionSec, progressPct]);
+  }, [alignedProFrame, proMotion, proMotionTime, userMotionTime, positionSec, progressPct]);
 
   return (
     <View className="px-5 mt-4">
