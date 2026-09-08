@@ -300,7 +300,7 @@ function SkeletonSvg({
         if (!requiredJoints.every(isVisible)) {
           // 반쯤 그린 그림은 잘못된 각도로 읽힌다. 아무것도 안 그리는 대신 이유를 말한다.
           return (
-            <Text x={boxW / 2} y={24} fill={HIGHLIGHT_COLOR} fontSize={12} textAnchor="middle">
+            <Text x={boxW / 2} y={24} fill={HIGHLIGHT_COLOR} fontSize={10} textAnchor="middle">
               관절이 가려져 표시할 수 없어요
             </Text>
           );
@@ -312,13 +312,13 @@ function SkeletonSvg({
         if (pts.length === 1) {
           return (
             <G>
-              <Circle cx={pts[0].px} cy={pts[0].py} r={7} fill={HIGHLIGHT_COLOR} />
+              <Circle cx={pts[0].px} cy={pts[0].py} r={4} fill={HIGHLIGHT_COLOR} />
               {highlight?.label ? (
                 <Text
                   x={pts[0].px}
                   y={pts[0].py - 14}
                   fill={HIGHLIGHT_COLOR}
-                  fontSize={14}
+                  fontSize={10}
                   fontWeight="bold"
                   textAnchor="middle"
                 >
@@ -364,16 +364,16 @@ function SkeletonSvg({
               stroke={HIGHLIGHT_COLOR} strokeWidth={axisEnd ? 2 : 4}
               strokeDasharray={axisEnd ? '5,4' : undefined} strokeLinecap="round"
             />
-            <Path d={arcPath(vertex.px, vertex.py, 24, a0, a1)} stroke={HIGHLIGHT_COLOR} strokeWidth={2} fill="none" />
+            <Path d={arcPath(vertex.px, vertex.py, 18, a0, a1)} stroke={HIGHLIGHT_COLOR} strokeWidth={2} fill="none" />
             {pts.map((p, i) => (
-              <Circle key={`h${i}`} cx={p.px} cy={p.py} r={6} fill={HIGHLIGHT_COLOR} />
+              <Circle key={`h${i}`} cx={p.px} cy={p.py} r={3.5} fill={HIGHLIGHT_COLOR} />
             ))}
             {highlight?.label ? (
               <Text
-                x={vertex.px + (Math.cos(mid) * 40)}
-                y={vertex.py + (Math.sin(mid) * 40)}
+                x={vertex.px + (Math.cos(mid) * 30)}
+                y={vertex.py + (Math.sin(mid) * 30)}
                 fill={HIGHLIGHT_COLOR}
-                fontSize={14}
+                fontSize={10}
                 fontWeight="bold"
                 textAnchor="middle"
               >
