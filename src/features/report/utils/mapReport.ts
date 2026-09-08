@@ -265,7 +265,11 @@ export function buildReportData(
       userEndFrame: p.userEndFrame,
       proStartFrame: p.proStartFrame,
       proEndFrame: p.proEndFrame,
-    }));
+    }))
+    // alignToCompareFrame은 spans[0]/spans[last]로 양 끝을 클램프한다. 서버 순서가
+    // 뒤집히면 그 클램프 기준이 틀어지므로, 여기서 사용자 시작 프레임 순으로 고정한다
+    // (리뷰 Minor 8).
+    .sort((a, b) => a.userStartFrame - b.userStartFrame);
 
   const timing = detail.release?.timing;
   const releaseTiming: ReleaseTiming = {

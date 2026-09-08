@@ -38,6 +38,7 @@ import {
 } from '../../../api/analysisApi';
 import { getErrorMessage, isRetryable, requiresReLogin } from '../../../api/apiError';
 import { parseSkeletonCsv } from '../utils/skeleton';
+import { formatValue } from '../utils/formatMetric';
 
 export default function ReportScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Report'>>();
@@ -170,23 +171,39 @@ export default function ReportScreen() {
     userLabel: string | null;
     proLabel: string | null;
     proFrame: number | null;
+    userFrame: number | null;
     nonce: number;
   } | null>(null);
 
   const handleSeekFrame = useCallback((frame: number, metric: PhaseMetric) => {
     setSeekRequest((prev) => ({ frame, nonce: (prev?.nonce ?? 0) + 1 }));
-    // 각도는 서버가 보낸 값을 그대로 라벨로 쓴다. 앱이 다시 계산하지 않는다.
-    const unitSuffix = metric.unit === 'degree' ? '°' : '';
+    // 구버전 서버는 관절 이름을 안 보낸다(userJoints/proJoints가 빈 배열). 그릴 관절이
+    // 없으니 강조를 켜지 않는다 — 재생만 멈추고 그림도 안내도 없는 조용한 무반응을
+    // 피하기 위해, 대신 이동만 하고 끝낸다(리뷰 Important 5).
+    if (metric.userJoints.length === 0 && metric.proJoints.length === 0) {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      return;
+    }
+    // 각도든 정규화 좌표든 서버가 보낸 값을 formatValue로 표기만 한다(앱이 재계산하지 않음).
+    // 축 지표(단위 없음)는 정규화 좌표라 Math.round를 쓰면 0.42가 "0"이 되어 버린다.
     setFocus((prev) => ({
       userJoints: metric.userJoints,
       proJoints: metric.proJoints,
-      userLabel: metric.userValue != null ? `${Math.round(metric.userValue)}${unitSuffix}` : null,
-      proLabel: metric.proValue != null ? `${Math.round(metric.proValue)}${unitSuffix}` : null,
+      userLabel: metric.userValue != null ? formatValue(metric.userValue, metric.unit) : null,
+      proLabel: metric.proValue != null ? formatValue(metric.proValue, metric.unit) : null,
       proFrame: metric.proFrame ?? null,
+      userFrame: metric.userFrame ?? null,
       nonce: (prev?.nonce ?? 0) + 1,
     }));
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   }, []);
+
+  // 비교 선수나 탭이 바뀌면 이전 포커스(강조 관절·라벨)를 지운다. SkeletonOverlayPlayer도
+  // comparePlayerId/isSingleVideo 변경에 자체적으로 activeFocus를 지우지만, 이 컴포넌트의
+  // focus state 자체도 낡은 값으로 남아있지 않도록 함께 초기화한다(리뷰 Critical 1).
+  useEffect(() => {
+    setFocus(null);
+  }, [selectedPlayerId, activeTab]);
 
   // ── ① 로딩 ────────────────────────────────────────────────────────────────
   if (loading && !result) {

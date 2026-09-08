@@ -79,6 +79,8 @@ interface SkeletonOverlayPlayerProps {
     userLabel: string | null;
     proLabel: string | null;
     proFrame: number | null;
+    /** 이 지표가 측정된 내 프레임. 포커스 중 내 스켈레톤도 이 프레임에 고정한다. */
+    userFrame: number | null;
     nonce: number;
   };
 }
@@ -305,9 +307,26 @@ function SkeletonSvg({
         }
         const pts = joints.map((j) => map(frame.points[j].x, frame.points[j].y));
 
-        // 길이 1은 강조만. 각도 기하가 없다.
+        // 길이 1(축 지표)은 각도 기하가 없어 강조 점뿐이지만, 라벨은 다른 지표와
+        // 동등하게 단다 — 스펙 §탭 동작 4는 축 지표를 예외로 두지 않는다(리뷰 Minor 6).
         if (pts.length === 1) {
-          return <Circle cx={pts[0].px} cy={pts[0].py} r={7} fill={HIGHLIGHT_COLOR} />;
+          return (
+            <G>
+              <Circle cx={pts[0].px} cy={pts[0].py} r={7} fill={HIGHLIGHT_COLOR} />
+              {highlight?.label ? (
+                <Text
+                  x={pts[0].px}
+                  y={pts[0].py - 14}
+                  fill={HIGHLIGHT_COLOR}
+                  fontSize={14}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                >
+                  {highlight.label}
+                </Text>
+              ) : null}
+            </G>
+          );
         }
 
         // 길이 2 = 몸통축 대비 각(암슬롯): 꼭짓점은 어깨, 기준은 몸통축 방향.
@@ -387,6 +406,11 @@ export default function SkeletonOverlayPlayer({
 
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  // 재생 "의도". 사용자의 togglePlay나 포커스 진입처럼 우리가 명시적으로 결정한 지점에서만
+  // 바뀐다. handleStatus는 네이티브 콜백이 이 의도와 어긋나는 동안(=우리가 막 멈췄는데
+  // 지연된 이벤트가 아직 "재생 중"을 보고하는 사이) isPlaying을 되쓰지 않는 데 쓴다
+  // (리뷰 Important 2 — 자세한 설명은 handleStatus 주석 참고).
+  const intentPlayingRef = useRef(false);
   const [positionSec, setPositionSec] = useState(0);
   const [durationSec, setDurationSec] = useState(0);
   const [natural, setNatural] = useState<NaturalSize | null>(null);
@@ -434,8 +458,13 @@ export default function SkeletonOverlayPlayer({
   // (재생 중 선수를 바꾸면 두 동작이 어긋난 채로 진행되던 문제 → 같은 출발선에서 다시 시작 준비)
   useEffect(() => {
     const startSec = playRange ? playRange.start : 0;
+    intentPlayingRef.current = false;
     setIsPlaying(false);
     setPositionSec(startSec);
+    // 비교 선수를 바꾸면 이전 프로의 강조(관절·라벨)가 새 스켈레톤 위에 남으면 안 된다
+    // (리뷰 Critical 1). ReportScreen의 focus 상태도 별도로 지우지만, nonce가 그대로면
+    // 그쪽 effect는 다시 돌지 않으므로 여기서 직접 지운다.
+    setActiveFocus(null);
     didSeekStartRef.current = true; // 방금 시작점으로 맞췄으니 handleStatus의 중복 시킹 방지
     if (hasVideo && videoRef.current) {
       videoRef.current.pauseAsync().catch(() => {});
@@ -444,6 +473,12 @@ export default function SkeletonOverlayPlayer({
     // 선수 변경에만 반응(playRange·hasVideo는 현재값을 읽기만 함)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comparePlayerId]);
+
+  // 탭 전환(timeline↔insight)에도 강조를 지운다. 이 컴포넌트는 탭이 바뀌어도 리마운트되지
+  // 않으므로(좌우 박스만 key로 리마운트) activeFocus가 그대로 남을 수 있다(리뷰 Critical 1).
+  useEffect(() => {
+    setActiveFocus(null);
+  }, [isSingleVideo]);
 
   // 영상이 없으면(피드 등) 가상 클럭으로 재생 위치를 진행시켜 스켈레톤을 애니메이션한다.
   useEffect(() => {
@@ -489,6 +524,7 @@ export default function SkeletonOverlayPlayer({
       videoRef.current?.setPositionAsync(startMs);
       if (status.didJustFinish) videoRef.current?.playAsync();
       setPositionSec(playRange ? playRange.start : 0);
+      intentPlayingRef.current = true; // 구간 반복 재시작 — 재생 의도를 재확인
       setIsPlaying(true);
       return;
     }
@@ -500,7 +536,20 @@ export default function SkeletonOverlayPlayer({
     // 이 컴포넌트는 playRange 끝에서 매번 되감으므로 특히 자주 걸린다.
     // 그래서 "재생 의도"(shouldPlay)도 함께 본다. 진짜 정지는 위 didJustFinish 분기와
     // 사용자의 일시정지(pauseAsync → shouldPlay=false)로만 일어난다.
-    setIsPlaying((status.isPlaying ?? false) || (status.shouldPlay ?? false));
+    const nativePlaying = (status.isPlaying ?? false) || (status.shouldPlay ?? false);
+    if (!intentPlayingRef.current) {
+      // 우리 의도는 "정지"다(예: 포커스 진입으로 pauseAsync를 부른 직후). expo-av의
+      // onPlaybackStatusUpdate는 100ms 주기라, 그 pauseAsync가 네이티브에 반영되기 전에
+      // 큐에 남아있던 지연 이벤트가 isPlaying/shouldPlay=true를 들고 올 수 있다. 그걸
+      // 그대로 반영하면 isPlaying state가 true가 되고, 다음 렌더에서 <Video shouldPlay={true}>
+      // 로 실제 재생이 재개된다 — "정지된 한 순간"이어야 할 포커스 위에서 영상이 다시
+      // 흐르는 리뷰 Important 2 버그. 의도가 정지인 동안은 네이티브 신호를 무시하고
+      // isPlaying을 false로 고정한다. 진짜 재생 재개는 togglePlay/루프 재시작처럼
+      // intentPlayingRef를 먼저 true로 바꾸는 지점에서만 일어난다.
+      setIsPlaying(false);
+      return;
+    }
+    setIsPlaying(nativePlaying);
   };
 
   // 영상 실제 해상도는 onReadyForDisplay로 전달된다(expo-av). COVER 좌표 매핑에 사용.
@@ -520,6 +569,8 @@ export default function SkeletonOverlayPlayer({
       const ref = videoRef.current;
       if (!ref) return;
       if (isPlaying) {
+        intentPlayingRef.current = false;
+        setIsPlaying(false);
         await ref.pauseAsync();
       } else {
         // 사용자가 실제로 재생을 눌렀을 때만 강조를 해제한다. isPlaying을 관찰해서 지우면
@@ -527,12 +578,16 @@ export default function SkeletonOverlayPlayer({
         // 사용자가 재생을 누르지 않았는데도 사라질 수 있다 — 그래서 관찰이 아니라
         // 이 사용자 동작 지점에서 지운다(리뷰에서 지적된 레이스 컨디션 수정).
         setActiveFocus(null);
+        intentPlayingRef.current = true;
+        setIsPlaying(true);
         await ref.playAsync();
       }
     } else {
       // 영상 없음: 가상 클럭 토글(스켈레톤만 재생). 같은 이유로 재생을 "시작"할 때만 해제.
-      if (!isPlaying) setActiveFocus(null);
-      setIsPlaying((p) => !p);
+      const next = !isPlaying;
+      if (next) setActiveFocus(null);
+      intentPlayingRef.current = next;
+      setIsPlaying(next);
     }
   };
 
@@ -564,6 +619,7 @@ export default function SkeletonOverlayPlayer({
   useEffect(() => {
     if (!focus) return;
     setActiveFocus(focus);
+    intentPlayingRef.current = false; // 정지 의도를 먼저 세워 handleStatus가 되쓰지 못하게 한다
     if (hasVideo) videoRef.current?.pauseAsync().catch(() => {});
     setIsPlaying(false);
     // nonce만 본다 — 같은 지표를 다시 눌러도 동작해야 한다
@@ -575,13 +631,25 @@ export default function SkeletonOverlayPlayer({
   // 전환 중 지연된 isPlaying/shouldPlay 이벤트가 튈 수 있는데, 이를 관찰해서 지우면
   // "이 순간 보기"로 멈춘 직후 그 지연 이벤트가 강조를 도로 꺼버리는 레이스가 생긴다.
   // (리뷰에서 지적된 문제 — 자세한 설명은 togglePlay 안 주석 참고.)
+  //
+  // 그 지연 이벤트는 강조뿐 아니라 "재생 자체"도 되살릴 수 있었다(리뷰 Important 2):
+  // handleStatus가 그 이벤트의 isPlaying/shouldPlay=true를 그대로 setIsPlaying(true)에
+  // 반영하면, 다음 렌더에서 <Video shouldPlay={true}>가 되어 정지된 것으로 보이던 영상이
+  // 실제로 다시 재생된다. intentPlayingRef가 "우리가 마지막으로 명령한 재생 의도"를
+  // 들고 있고, handleStatus는 의도가 정지인 동안 네이티브 신호를 무시하므로(위 참고)
+  // 이 경로로는 더 이상 재생이 재개되지 않는다.
 
-  // 내 스켈레톤: 재생 시간 기준 최근접 프레임
+  // 내 스켈레톤: 재생 시간 기준 최근접 프레임.
+  // 포커스 중에는 positionSec 경유 시킹 오차 없이 측정된 그 프레임에 직접 고정한다 —
+  // 라벨은 서버의 정확한 값을 단언하므로 그림도 같은 프레임이어야 한다(리뷰 Important 3).
   const userFrame = useMemo<SkeletonFrame | null>(() => {
     if (userFrames.length === 0) return null;
+    if (activeFocus && activeFocus.userFrame != null) {
+      return frameNearestFrameIndex(userFrames, activeFocus.userFrame);
+    }
     const i = frameIndexAtTime(userFrames, positionSec);
     return i >= 0 ? userFrames[i] : null;
-  }, [userFrames, positionSec]);
+  }, [userFrames, positionSec, activeFocus]);
 
   // 유효한 단계들(동작 구간 정규화의 기준). 편집/idle 여부와 무관하게 "동작 구간"만 사용.
   const phaseFrames = useMemo(
@@ -657,9 +725,13 @@ export default function SkeletonOverlayPlayer({
   const proFrame = useMemo<SkeletonFrame | null>(() => {
     if (proFrames.length === 0) return null;
 
-    // 포커스 중(측정 순간 보기)이고 실시간 모드일 때만 비교 스켈레톤을 그 측정 프레임으로 고정한다.
-    // 동작 정렬 모드에서는 구간 진행률 대응이 이미 측정 순간을 맞춰준다.
-    if (activeFocus && !alignMotion && activeFocus.proFrame != null) {
+    // 포커스 중(측정 순간 보기)이면 모드와 무관하게 비교 스켈레톤을 그 측정 프레임으로
+    // "고정"한다(단순 유도가 아니라). 동작 정렬 모드에서 positionSec→사용자 프레임 스냅→
+    // 대응→프로 프레임 스냅 경로를 타면 영상 시킹 오차 + 양쪽 ±0.5프레임 스냅 오차가 낀다
+    // (사용자 구간이 짧고 프로 구간이 길면 스냅 오차가 구간 길이비만큼 증폭된다). 이 지표는
+    // 정의상 activeFocus.proFrame이 바로 그 측정 프레임이므로 그대로 고정해도 정렬은
+    // 깨지지 않는다(리뷰 Important 3).
+    if (activeFocus && activeFocus.proFrame != null) {
       return frameNearestFrameIndex(proFrames, activeFocus.proFrame);
     }
 
