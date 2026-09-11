@@ -4,8 +4,8 @@
  * 화면 포커스 시 GET /api/users/me/stats 로 내 통계를 받아 렌더한다.
  */
 
-import React, { useCallback, useState } from 'react';
-import { View, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { View, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,9 @@ import GrowthChartCard from '../components/GrowthChartCard';
 import AppText from '../../../components/common/AppText';
 import { GrowthData, PitchDistributionItem, ProPlayerOption } from '../types/my.types';
 import { getMyStats, getComparedPros, UserStats } from '../../../api/userApi';
+import { getErrorMessage, isRetryable } from '../../../api/apiError';
 import { useDoubleBackExit } from '../../../hooks/useDoubleBackExit';
+import { endSession } from '../../auth/session';
 
 // ─── 통계 카드 아이콘 ────────────────────────────────────────
 function SessionIcon() {
@@ -51,44 +53,70 @@ export default function MyScreen() {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [proPlayers, setProPlayers] = useState<ProPlayerOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 예외 객체를 그대로 보관한다. 백엔드가 내려준 code로 재시도 여부를 가릅하기 위해서다.
+  const [error, setError] = useState<unknown>(null);
+
+  /**
+   * 내 통계 + 비교 프로 목록을 불러온다.
+   * 탭 포커스와 '다시 시도' 버튼이 같은 함수를 쓰므로 재조회 경로가 하나로 유지된다.
+   *
+   * requestIdRef: 응답이 도착했을 때 더 최신 요청이 이미 시작됐다면 그 결과는 버린다.
+   */
+  const requestIdRef = useRef(0);
+
+  const loadStats = useCallback(() => {
+    const requestId = ++requestIdRef.current;
+    const isStale = () => requestId !== requestIdRef.current;
+
+    setLoading(true);
+    setError(null);
+    getMyStats()
+      .then((data) => {
+        if (!isStale()) setStats(data);
+      })
+      .catch((e) => {
+        if (!isStale()) setError(e);
+      })
+      .finally(() => {
+        if (!isStale()) setLoading(false);
+      });
+
+    // 그래프 드롭다운용 실제 비교 프로 목록.
+    // 이 목록이 없으면 드롭다운만 비고 통계 본문은 그대로 유효하므로, 실패해도 화면을 막지 않는다.
+    getComparedPros()
+      .then((pros) => {
+        if (isStale()) return;
+        setProPlayers(
+          pros.map((p) => ({
+            id: String(p.proId),
+            name: p.pitcherName,
+            initial: p.pitcherName?.charAt(0) ?? 'P',
+          })),
+        );
+      })
+      .catch(() => {
+        if (!isStale()) setProPlayers([]);
+      });
+  }, []);
+
+  /**
+   * 로그아웃. 되돌릴 수 없는 동작이므로 확인을 한 번 받는다.
+   *
+   * 실제 정리(구글 세션 해제 + 토큰 삭제 + 로그인 화면 복귀)는 endSession이 담당한다.
+   * 세션 만료로 자동 로그아웃될 때와 같은 경로를 쓰기 위해서다.
+   */
+  const handleLogout = useCallback(() => {
+    Alert.alert('로그아웃', '로그아웃할까요?', [
+      { text: '취소', style: 'cancel' },
+      { text: '로그아웃', style: 'destructive', onPress: () => void endSession() },
+    ]);
+  }, []);
 
   // 탭에 들어올 때마다 최신 통계 + 비교 프로 목록 갱신 (분석 직후 복귀 시 반영)
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      setLoading(true);
-      setError(null);
-      getMyStats()
-        .then((data) => {
-          if (active) setStats(data);
-        })
-        .catch((e) => {
-          if (active) setError(e instanceof Error ? e.message : '통계를 불러오지 못했습니다.');
-        })
-        .finally(() => {
-          if (active) setLoading(false);
-        });
-      // 그래프 드롭다운용 실제 비교 프로 목록
-      getComparedPros()
-        .then((pros) => {
-          if (active) {
-            setProPlayers(
-              pros.map((p) => ({
-                id: String(p.proId),
-                name: p.pitcherName,
-                initial: p.pitcherName?.charAt(0) ?? 'P',
-              })),
-            );
-          }
-        })
-        .catch(() => {
-          if (active) setProPlayers([]);
-        });
-      return () => {
-        active = false;
-      };
-    }, []),
+      loadStats();
+    }, [loadStats]),
   );
 
   // ── 로딩 ──
@@ -101,10 +129,45 @@ export default function MyScreen() {
   }
 
   // ── 에러 ──
+  // 백엔드는 실패 사유를 { code, message }로 내려준다. message를 그대로 보여주고,
+  // 일시적 장애(네트워크/5xx)일 때만 다시 시도를 제안한다.
   if (error && !stats) {
     return (
-      <SafeAreaView className="flex-1 bg-surface-page items-center justify-center px-8" edges={['top']}>
-        <AppText className="text-text-secondary text-sm text-center">{error}</AppText>
+      <SafeAreaView
+        className="flex-1 bg-surface-page items-center justify-center px-8"
+        edges={['top']}
+      >
+        <Ionicons name="cloud-offline-outline" size={40} color="#C4C9CF" />
+        <AppText className="text-text-secondary text-sm text-center mt-4">
+          {getErrorMessage(error)}
+        </AppText>
+        {isRetryable(error) ? (
+          <TouchableOpacity
+            onPress={loadStats}
+            activeOpacity={0.8}
+            className="mt-5 px-6 py-2.5 rounded-full bg-brand"
+          >
+            <AppText weight="bold" className="text-white text-sm">
+              다시 시도
+            </AppText>
+          </TouchableOpacity>
+        ) : null}
+
+        {/*
+          이 화면에서도 로그아웃할 수 있어야 한다.
+          통계 조회가 실패하면 상단 헤더(로그아웃 버튼이 있는 곳)가 렌더되지 않으므로,
+          여기에 길이 없으면 사용자는 서버가 복구될 때까지 이 화면에 갇힌다.
+        */}
+        <TouchableOpacity
+          onPress={handleLogout}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          className="mt-3 px-6 py-2.5"
+        >
+          <AppText weight="medium" className="text-text-secondary text-sm">
+            로그아웃
+          </AppText>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -129,7 +192,11 @@ export default function MyScreen() {
   return (
     <SafeAreaView className="flex-1 bg-surface-page" edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <ProfileHeader nickname={s.nickname} recentAnalysisCount={s.recentAnalysisCount} />
+        <ProfileHeader
+          nickname={s.nickname}
+          recentAnalysisCount={s.recentAnalysisCount}
+          onLogoutPress={handleLogout}
+        />
 
         {/* 통계 카드 3개 */}
         <View className="flex-row mx-5 mb-4" style={{ gap: 10 }}>

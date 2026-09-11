@@ -33,8 +33,8 @@ const SHEET_HEIGHT = 300;
 interface BestPitchRegisterSheetProps {
   /** 분석된/선택된 구종 */
   pitchType: PitchType;
-  /** "완료" 버튼 콜백 */
-  onComplete: () => void;
+  /** "완료" 버튼 콜백. register=true면 이 영상을 최고의 1구로 등록한다. */
+  onComplete: (register: boolean) => void;
   /** 시트 닫기 콜백 (아래로 드래그 시) */
   onClose?: () => void;
 }
@@ -168,7 +168,7 @@ export default function BestPitchRegisterSheet({
 
         {/* ── 완료 버튼 ── */}
         <TouchableOpacity
-          onPress={onComplete}
+          onPress={() => onComplete(isRegistered)}
           activeOpacity={0.85}
           style={{
             backgroundColor: '#3BC1A8',

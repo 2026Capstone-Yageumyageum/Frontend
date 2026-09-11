@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Image } from 'react-native';
+import { View, Image, Alert } from 'react-native';
 import AppText from '../components/common/AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Button from '../components/common/Button';
@@ -15,6 +15,8 @@ import {
 } from '@react-native-google-signin/google-signin';
 // 백엔드 API 통신 함수
 import { loginWithGoogle } from '../api/authApi';
+import { getErrorMessage } from '../api/apiError';
+import { ensureGoogleSigninConfigured } from '../features/auth/googleSignin';
 // 토큰 저장 유틸리티
 import { saveTokens } from '../utils/token';
 
@@ -24,16 +26,12 @@ export default function Login() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      offlineAccess: true,
-    });
+    ensureGoogleSigninConfigured();
   }, []);
 
   const handleGoogleLogin = async () => {
     if (isLoading) return;
     setIsLoading(true);
-    console.log('클라이언트 ID:', process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
@@ -41,17 +39,15 @@ export default function Login() {
 
       if (isSuccessResponse(response)) {
         const idToken = response.data.idToken;
-        const userInfo = response.data.user;
 
-        console.log('구글 로그인 성공!');
-        console.log('이름:', userInfo.name);
-        console.log('이메일:', userInfo.email);
-        console.log('획득한 idToken:', idToken);
+        // 로그 주의: idToken/accessToken/refreshToken과 이름·이메일은 절대 출력하지 않는다.
+        // 토큰은 그 자체로 계정 접근 수단이고, Metro 콘솔·기기 로그·화면 공유로 새어나간다.
 
         // idToken이 null인 경우 방어 처리
         // (구글이 idToken을 반환하지 않는 경우는 드물지만 안전하게 처리)
         if (!idToken) {
           console.error('[Google 로그인] idToken을 받지 못했습니다.');
+          Alert.alert('로그인 실패', '구글 인증 정보를 받지 못했어요. 다시 시도해 주세요.');
           return;
         }
 
@@ -59,19 +55,17 @@ export default function Login() {
         //  백엔드에 idToken 전달
         //  응답에 따라 기존 유저 / 신규 유저 분기 처리
         // ─────────────────────────────────────────────
+        // authResult에는 accessToken/refreshToken이 담겨 있으므로 로깅하지 않는다.
         const authResult = await loginWithGoogle(idToken);
-        console.log('[서버 응답]', authResult);
 
         if (authResult.isRegistered) {
           // 기존 유저: 토큰 저장 후 메인 화면으로 이동
           if (authResult.accessToken && authResult.refreshToken) {
             await saveTokens(authResult.accessToken, authResult.refreshToken);
           }
-          console.log('기존 유저 로그인 완료. 메인으로 이동합니다.');
           navigation.navigate('Home');
         } else {
           // 신규 유저: 닉네임 등록 화면으로 이동, 이메일 전달
-          console.log('신규 유저 감지. 닉네임 등록 화면으로 이동합니다.');
           navigation.navigate('Signup', { email: authResult.email });
         }
       }
@@ -90,20 +84,27 @@ export default function Login() {
           case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
             // Google Play Services가 기기에 없거나 버전이 낮은 경우
             console.error('[Google 로그인] Google Play Services를 사용할 수 없습니다.');
+            Alert.alert(
+              '로그인 실패',
+              'Google Play 서비스를 사용할 수 없어요. 업데이트 후 다시 시도해 주세요.',
+            );
             break;
           default:
             // DEVELOPER_ERROR 등 설정 문제: SHA-1 미등록, 패키지명 불일치, 잘못된 clientId 등
             console.error('[Google 로그인] 알 수 없는 오류 발생');
             console.error('  → 에러 코드:', error.code);
-            console.error('  → 에러 메시지:', error.message);
             console.error(
               '  → DEVELOPER_ERROR라면 Google Cloud Console의 SHA-1 지문 또는 패키지명을 확인하세요.',
             );
+            Alert.alert('로그인 실패', '구글 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.');
             break;
         }
       } else {
-        // 라이브러리와 무관한 일반 JS 에러 (네트워크 오류, 백엔드 API 실패 등)
+        // 백엔드 API 실패(ApiError) 또는 네트워크 오류.
+        // 백엔드가 내려준 message는 사용자에게 보여줘도 되도록 작성돼 있으므로 그대로 쓰고,
+        // 그 밖의 예외는 내부 정보가 담길 수 있어 기본 문구로 대체한다.
         console.error('[Google 로그인] 예기치 않은 에러:', error);
+        Alert.alert('로그인 실패', getErrorMessage(error));
       }
     } finally {
       setIsLoading(false);
